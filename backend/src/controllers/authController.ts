@@ -77,9 +77,13 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
         logo_url: user.logo_url
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    res.status(500).json({ 
+      error: 'Server error during login',
+      details: error?.message || String(error),
+      stack: error?.stack
+    });
   }
 };
 
