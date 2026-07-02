@@ -1,5 +1,6 @@
 "use client";
 
+// Force Netlify redeploy with new API env variable
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import SmaLogo from "@/components/SmaLogo";
