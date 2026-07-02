@@ -10,7 +10,10 @@ const PORT = process.env.PORT || 5000;
 // Security Middlewares
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Dynamically echo the origin back to allow localhost, Netlify, and custom domains
+    callback(null, true);
+  },
   credentials: true
 }));
 
