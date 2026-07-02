@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-textPrimary antialiased selection:bg-primary selection:text-white;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Premium Glassmorphic Card Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.premium-card {
+  @apply rounded-card bg-card border border-border shadow-soft transition-all duration-300 hover:shadow-premium hover:-translate-y-1 dark:bg-slate-900 dark:border-slate-800 dark:hover:shadow-none;
+}
+
+/* Global Dark Mode Overrides */
+.dark {
+  --background: #020617;
+}
+
+.dark body {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-background {
+  background-color: #020617 !important;
+}
+
+.dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #090d16 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .text-textPrimary {
+  color: #f8fafc !important;
+}
+
+.dark .text-textSecondary {
+  color: #94a3b8 !important;
+}
+
+.dark .border-border {
+  border-color: #1e293b !important;
+}
+
+.dark .border {
+  border-color: #1e293b !important;
+}
+
+.dark input, .dark select, .dark textarea {
+  background-color: #020617 !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #475569 !important;
+}
+
+.dark tr, .dark th, .dark td {
+  border-color: #1e293b !important;
+}
+
+.dark th {
+  background-color: #090d16 !important;
+  color: #94a3b8 !important;
+}
+
+.dark td {
+  color: #e2e8f0 !important;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b !important;
+}
+
+/* Custom Scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-textSecondary/20 rounded-full hover:bg-textSecondary/40;
+}
