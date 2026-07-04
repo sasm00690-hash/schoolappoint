@@ -114,7 +114,8 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
         staff_id: user.staff_id,
         school_id: user.school_id,
         school_name: user.school_name,
-        logo_url: user.logo_url
+        logo_url: user.logo_url,
+        avatar_url: user.avatar_url
       }
     });
   } catch (error: any) {
@@ -168,7 +169,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
 
   try {
     const result = await query(
-      `SELECT sa.id, sa.name, sa.email, sa.role, sa.school_id, s.name as school_name, s.logo_url 
+      `SELECT sa.id, sa.name, sa.email, sa.role, sa.sub_role, sa.staff_id, sa.avatar_url, sa.school_id, s.name as school_name, s.logo_url 
        FROM school_admins sa
        LEFT JOIN schools s ON sa.school_id = s.id
        WHERE sa.id = $1`,

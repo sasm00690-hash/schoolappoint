@@ -446,10 +446,20 @@ const translations = {
 
 const COLORS = ["#0f4c81", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
+const PRESET_AVATARS = [
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA1",
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA2",
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA3",
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA4",
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA5",
+  "https://api.dicebear.com/7.x/bottts/svg?seed=SMA6"
+];
+
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "profile" | "schools" | "pending" | "admins" | "subscriptions" | "announcements" | "audit" | "sessions" | "billing" | "maintenance" | "alerts" | "support" | "team" | "messages">("overview");
   const [overviewSubTab, setOverviewSubTab] = useState<"schools" | "team">("schools");
+  const [teamSubTab, setTeamSubTab] = useState<"directory" | "applications">("directory");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
@@ -460,6 +470,8 @@ export default function SuperAdminDashboardPage() {
   const [saMessages, setSaMessages] = useState<any[]>([]);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState<string>("");
+  const [saApplications, setSaApplications] = useState<any[]>([]);
+  const [selectedStaffDetail, setSelectedStaffDetail] = useState<any | null>(null);
 
   const [staffFormData, setStaffFormData] = useState({
     name: "",
@@ -468,7 +480,8 @@ export default function SuperAdminDashboardPage() {
     sub_role: "Support",
     shift_start: "",
     shift_end: "",
-    allowed_ip: ""
+    allowed_ip: "",
+    avatar_url: ""
   });
 
   const [taskFormData, setTaskFormData] = useState({
@@ -693,7 +706,8 @@ export default function SuperAdminDashboardPage() {
         fetchSupportTickets(),
         fetchSaStaff(),
         fetchSaTasks(),
-        fetchSaPerformance()
+        fetchSaPerformance(),
+        fetchStaffApplications()
       ]);
     } catch (error) {
       console.error(error);
@@ -735,6 +749,18 @@ export default function SuperAdminDashboardPage() {
       if (res.ok) setSaPerformance(await res.json());
     } catch (e) {
       console.error("Error fetching performance metrics:", e);
+    }
+  };
+
+  const fetchStaffApplications = async () => {
+    if (!token || user?.sub_role) return;
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff-applications`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) setSaApplications(await res.json());
+    } catch (e) {
+      console.error("Error fetching staff applications:", e);
     }
   };
 
@@ -1788,10 +1814,62 @@ export default function SuperAdminDashboardPage() {
         sub_role: "Support",
         shift_start: "",
         shift_end: "",
-        allowed_ip: ""
+        allowed_ip: "",
+        avatar_url: ""
       });
       fetchSaStaff();
       fetchSaPerformance();
+    } catch (error: any) {
+      setErr(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectStaffApplication = async (id: string) => {
+    if (!confirm(lang === "so" ? "Ma hubtaa inaad rabto inaad diido codsigan shaqo?" : "Are you sure you want to reject this staff application?")) return;
+    setActionLoading(true);
+    setErr("");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff-applications/${id}/reject`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reject application");
+      setMsg(lang === "so" ? "Codsiga shaqo waa la diiday." : "Application rejected successfully.");
+      fetchStaffApplications();
+      await fetchAuditLogs();
+    } catch (error: any) {
+      setErr(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleHireStaffApplication = async (id: string) => {
+    setActionLoading(true);
+    setErr("");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff-applications/${id}/hire`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to hire application");
+      
+      setApprovedCreds({
+        email: data.staff.email,
+        password: data.tempPassword
+      });
+      setShowCredsModal(true);
+      
+      setMsg(lang === "so" ? "Si guul leh ayaa loo shaqaaleeyay musharaxa!" : "Candidate hired successfully!");
+      fetchStaffApplications();
+      fetchSaStaff();
+      await fetchAuditLogs();
     } catch (error: any) {
       setErr(error.message);
     } finally {
@@ -3787,6 +3865,37 @@ export default function SuperAdminDashboardPage() {
           {/* Tab: team (Maamulista Shaqaalaha) */}
           {activeTab === "team" && (
             <div className="space-y-6 animate-fadeIn">
+              {/* Sub-tab navigation */}
+              <div className="flex gap-2 border-b border-border pb-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTeamSubTab("directory")}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    teamSubTab === "directory"
+                      ? "bg-primary text-white shadow-soft"
+                      : "bg-slate-50 text-textSecondary hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-900"
+                  }`}
+                >
+                  👥 {lang === "so" ? "Diiwaanka & Shift-yada Shaqaalaha" : "Staff Directory & Shifts"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeamSubTab("applications")}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                    teamSubTab === "applications"
+                      ? "bg-primary text-white shadow-soft"
+                      : "bg-slate-50 text-textSecondary hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-900"
+                  }`}
+                >
+                  📩 {lang === "so" ? "Codsiyada Shaqaalaha Cusub" : "Prospective Staff Applications"}
+                  {saApplications.filter(a => a.status === "Pending").length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
+                  )}
+                </button>
+              </div>
+
+              {teamSubTab === "directory" ? (
+                <>
               {/* Performance Cards */}
               <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
                 <h3 className="font-extrabold text-sm text-textPrimary uppercase tracking-wider">KPI-yada Shaqada Team-ka (Performance Logs)</h3>
@@ -3884,6 +3993,28 @@ export default function SuperAdminDashboardPage() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-textPrimary block">Dooro Sawirka Profile-ka (Select Avatar)</label>
+                      <div className="flex items-center gap-2.5 pb-1">
+                        {PRESET_AVATARS.map((avUrl, index) => {
+                          const isSelected = staffFormData.avatar_url === avUrl;
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setStaffFormData({...staffFormData, avatar_url: avUrl})}
+                              className={`w-9 h-9 rounded-full border-2 overflow-hidden transition-all p-0.5 bg-slate-50 dark:bg-slate-950 ${
+                                isSelected 
+                                  ? "border-primary scale-110 shadow-soft ring-2 ring-primary/20" 
+                                  : "border-border opacity-70 hover:opacity-100 hover:scale-105"
+                              }`}
+                            >
+                              <img src={avUrl} alt="Avatar" className="w-full h-full object-contain" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <div className="pt-2 flex justify-end">
                       <button 
                         type="submit" disabled={actionLoading}
@@ -3949,6 +4080,7 @@ export default function SuperAdminDashboardPage() {
                     <thead>
                       <tr className="border-b border-border dark:border-slate-800 text-[10px] text-textSecondary uppercase tracking-wider font-bold">
                         <th className="pb-3">ID</th>
+                        <th className="pb-3">Sawirka</th>
                         <th className="pb-3">Magaca</th>
                         <th className="pb-3">Email</th>
                         <th className="pb-3">Role</th>
@@ -3960,12 +4092,21 @@ export default function SuperAdminDashboardPage() {
                     <tbody className="divide-y divide-border dark:divide-slate-800 text-xs">
                       {saStaff.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-6 text-center text-textSecondary font-medium">Ma jiraan shaqaale la diiwaangeliyey.</td>
+                          <td colSpan={8} className="py-6 text-center text-textSecondary font-medium">Ma jiraan shaqaale la diiwaangeliyey.</td>
                         </tr>
                       ) : (
                         saStaff.map(st => (
                           <tr key={st.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
                             <td className="py-3.5 font-mono font-bold text-primary">{st.staff_id}</td>
+                            <td className="py-3.5">
+                              {st.avatar_url ? (
+                                <img src={st.avatar_url} alt={st.name} className="w-8 h-8 rounded-full object-contain bg-slate-50 dark:bg-slate-950 border border-border" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-850 text-textPrimary flex items-center justify-center font-bold text-xs">
+                                  {st.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </td>
                             <td className="py-3.5 font-bold text-textPrimary">{st.name}</td>
                             <td className="py-3.5 text-textSecondary">{st.email}</td>
                             <td className="py-3.5">
@@ -3983,7 +4124,14 @@ export default function SuperAdminDashboardPage() {
                               {st.shift_start && st.shift_end ? `${st.shift_start} - ${st.shift_end}` : "24/7 (Open)"}
                             </td>
                             <td className="py-3.5 text-textSecondary font-mono">{st.allowed_ip || "Any IP"}</td>
-                            <td className="py-3.5 text-right">
+                            <td className="py-3.5 text-right space-x-1.5">
+                              <button 
+                                onClick={() => setSelectedStaffDetail(st)}
+                                className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                                title="Eeg Profile-ka (View Profile)"
+                              >
+                                <User className="w-4 h-4" />
+                              </button>
                               <button 
                                 onClick={() => handleDeleteStaff(st.id)}
                                 className="p-1 text-danger hover:bg-danger/10 rounded transition-colors"
@@ -4121,6 +4269,84 @@ export default function SuperAdminDashboardPage() {
                   </table>
                 </div>
               </div>
+              </>
+              ) : (
+                <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800 animate-fadeIn">
+                  <div className="flex justify-between items-center pb-2 border-b border-border dark:border-slate-800">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-textPrimary">Codsiyada Ku Biirista Platform-ka (Prospective Staff Applications)</h3>
+                      <p className="text-[11px] text-textSecondary">Dib u eeg musharaxiinta codsiyada shaqo soo gudbiyey si aad u shaqaaleyso.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {saApplications.length === 0 ? (
+                      <div className="p-10 text-center text-textSecondary border border-dashed border-border rounded-xl font-medium dark:border-slate-800">
+                        Ma jiraan wax codsiyo ah oo hadda jira.
+                      </div>
+                    ) : (
+                      saApplications.map((app) => (
+                        <div key={app.id} className="p-5 border border-border rounded-2xl bg-slate-50 dark:bg-slate-950/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fadeIn">
+                          <div className="space-y-2 max-w-2xl text-left">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-extrabold text-sm text-textPrimary">{app.name}</h4>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                app.sub_role === "Support" 
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                  : app.sub_role === "Billing"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                              }`}>
+                                {app.sub_role}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                app.status === "Pending"
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                  : app.status === "Hired"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : "bg-danger/10 text-danger dark:bg-danger/20"
+                              }`}>
+                                {app.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-textSecondary font-semibold">Email: <span className="font-normal font-mono">{app.email}</span></p>
+                            {app.bio && (
+                              <p className="text-xs text-textSecondary italic bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-border dark:border-slate-800">
+                                "{app.bio}"
+                              </p>
+                            )}
+                            {app.resume_url && (
+                              <a 
+                                href={app.resume_url} target="_blank" rel="noreferrer"
+                                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 mt-1"
+                              >
+                                📎 Eeg Warqada Codsiga / Resume (Open Attachment)
+                              </a>
+                            )}
+                          </div>
+                          {app.status === "Pending" && (
+                            <div className="flex gap-2 shrink-0 w-full md:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleRejectStaffApplication(app.id)}
+                                className="px-4 py-2 bg-white text-danger border border-danger/20 font-bold text-xs rounded-xl hover:bg-danger/5 transition-all w-full md:w-auto dark:bg-slate-900"
+                              >
+                                Diid (Reject)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleHireStaffApplication(app.id)}
+                                className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary/95 transition-all shadow-md w-full md:w-auto flex items-center justify-center gap-1"
+                              >
+                                Shaqaalee (Hire)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -4302,6 +4528,143 @@ export default function SuperAdminDashboardPage() {
             >
               Waan Koobiyey, Xir daaqada
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Staff Detail Profile Modal Overlay */}
+      {selectedStaffDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-border dark:border-slate-850 rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto animate-scaleIn">
+            {/* Header info */}
+            <div className="flex justify-between items-start border-b border-border dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-4">
+                {selectedStaffDetail.avatar_url ? (
+                  <img src={selectedStaffDetail.avatar_url} alt={selectedStaffDetail.name} className="w-16 h-16 rounded-full object-contain bg-slate-50 border border-border p-1 dark:bg-slate-950 dark:border-slate-850" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-extrabold text-xl">
+                    {selectedStaffDetail.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-left">
+                  <h3 className="font-extrabold text-base text-textPrimary">{selectedStaffDetail.name}</h3>
+                  <p className="text-[10px] text-textSecondary font-bold uppercase tracking-wider">
+                    Staff ID: <span className="text-primary font-mono">{selectedStaffDetail.staff_id}</span> • {selectedStaffDetail.email}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary text-white">
+                      {selectedStaffDetail.sub_role}
+                    </span>
+                    <span className="text-xs text-textSecondary font-bold">
+                      Shift: {selectedStaffDetail.shift_start && selectedStaffDetail.shift_end ? `${selectedStaffDetail.shift_start} - ${selectedStaffDetail.shift_end}` : "24/7 (Open)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedStaffDetail(null)}
+                className="text-textSecondary hover:text-textPrimary p-1 bg-slate-50 dark:bg-slate-950 rounded-lg border border-border dark:border-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Performance KPIs for this staff member */}
+            <div className="space-y-2 text-left">
+              <h4 className="font-extrabold text-xs text-textPrimary uppercase tracking-wider">KPI-yada Shaqada (Performance)</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl">
+                  <span className="text-[8px] font-bold text-primary uppercase block">Approvals</span>
+                  <span className="text-lg font-extrabold text-textPrimary">
+                    {saPerformance?.approvals?.find((a: any) => a.user_id === selectedStaffDetail.id)?.count || 0} Done
+                  </span>
+                </div>
+                <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                  <span className="text-[8px] font-bold text-emerald-500 uppercase block">Tickets Resolved</span>
+                  <span className="text-lg font-extrabold text-textPrimary">
+                    {saPerformance?.supportReplies?.find((r: any) => r.user_id === selectedStaffDetail.id)?.count || 0} Done
+                  </span>
+                </div>
+                <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-xl">
+                  <span className="text-[8px] font-bold text-purple-500 uppercase block">Active Hours</span>
+                  <span className="text-lg font-extrabold text-textPrimary">
+                    {Math.round((saPerformance?.sessionTime?.find((t: any) => t.user_id === selectedStaffDetail.id)?.total_minutes || 0) / 60 * 10) / 10} hrs
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Security and Network settings */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl text-left space-y-1">
+              <span className="text-[10px] font-extrabold text-textSecondary uppercase block">Xadka Shabakada & Amniga (Allowed IP Bounds)</span>
+              <p className="text-xs text-textPrimary font-bold font-mono">
+                {selectedStaffDetail.allowed_ip ? `Oggol yahay kaliya IP: ${selectedStaffDetail.allowed_ip}` : "Xor ah (Wuxuu ka soo geli karaa meel kasta)"}
+              </p>
+            </div>
+
+            {/* Grid: Tasks and Attendance logs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              {/* Tasks List */}
+              <div className="space-y-3">
+                <h4 className="font-extrabold text-xs text-textPrimary uppercase tracking-wider border-b border-border dark:border-slate-800 pb-1">
+                  Hawlihii la Xilsaaray (Assigned Tasks)
+                </h4>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                  {saTasks.filter(t => t.assigned_to === selectedStaffDetail.id).length === 0 ? (
+                    <p className="text-xs text-textSecondary italic">Ma jiraan wax hawlo ah oo loo qoondeeyay.</p>
+                  ) : (
+                    saTasks.filter(t => t.assigned_to === selectedStaffDetail.id).map(t => (
+                      <div key={t.id} className="p-3 border border-border rounded-xl bg-white dark:bg-slate-900 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-xs text-textPrimary">{t.title}</h5>
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            t.status === "Completed" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {t.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-textSecondary leading-relaxed">{t.description}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Session Logs / Attendance */}
+              <div className="space-y-3">
+                <h4 className="font-extrabold text-xs text-textPrimary uppercase tracking-wider border-b border-border dark:border-slate-800 pb-1">
+                  Diiwaanka Imaanshaha (Clock In Logs)
+                </h4>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                  {userSessions.filter(s => s.user_id === selectedStaffDetail.id).length === 0 ? (
+                    <p className="text-xs text-textSecondary italic">Ma jiraan wax soo-gelitaan ah oo la diiwaangeliyey.</p>
+                  ) : (
+                    userSessions.filter(s => s.user_id === selectedStaffDetail.id).map((sess, idx) => (
+                      <div key={idx} className="p-3 border border-border rounded-xl bg-white dark:bg-slate-900 space-y-1">
+                        <div className="flex justify-between items-center text-[10px] font-bold text-textPrimary">
+                          <span>{new Date(sess.login_time).toLocaleDateString()}</span>
+                          <span className="font-mono text-textSecondary">{sess.ip_address || "Unknown IP"}</span>
+                        </div>
+                        <p className="text-[9px] text-textSecondary">
+                          In: {new Date(sess.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • 
+                          Out: {sess.logout_time ? new Date(sess.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Active"} 
+                          {sess.duration_minutes !== null && ` (${sess.duration_minutes} min)`}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button 
+                onClick={() => setSelectedStaffDetail(null)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-textPrimary font-bold text-xs rounded-xl transition-all dark:bg-slate-950 dark:hover:bg-slate-900"
+              >
+                Xir (Close Profile)
+              </button>
+            </div>
           </div>
         </div>
       )}

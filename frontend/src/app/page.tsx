@@ -19,7 +19,8 @@ import {
   HelpCircle,
   Sun,
   Moon,
-  Check
+  Check,
+  Briefcase
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -59,6 +60,19 @@ export default function HomePage() {
   const [onboardingError, setOnboardingError] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("Starter");
   const [onboardingStep, setOnboardingStep] = useState(1);
+
+  // Staff Job Application States
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [applySuccess, setApplySuccess] = useState(false);
+  const [applyError, setApplyError] = useState("");
+  const [applyFormData, setApplyFormData] = useState({
+    name: "",
+    email: "",
+    sub_role: "Support",
+    resume_url: "",
+    bio: ""
+  });
 
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +119,39 @@ export default function HomePage() {
       setOnboardingError("Cillad dhinaca server-ka ah ayaa dhacday. Fadlan mar kale isku day.");
     } finally {
       setOnboardingLoading(false);
+    }
+  };
+
+  const handleApplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!applyFormData.name || !applyFormData.email || !applyFormData.sub_role) {
+      setApplyError("Fadlan buuxi dhammaan meelaha muhiimka ah.");
+      return;
+    }
+    setApplyLoading(true);
+    setApplyError("");
+    setApplySuccess(false);
+
+    try {
+      const res = await fetch(`${API_BASE}/public/staff-apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(applyFormData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Waa ku guuldareystay dirista codsiga.");
+      setApplySuccess(true);
+      setApplyFormData({
+        name: "",
+        email: "",
+        sub_role: "Support",
+        resume_url: "",
+        bio: ""
+      });
+    } catch (err: any) {
+      setApplyError(err.message || "Cillad dhinaca server-ka ah ayaa dhacday.");
+    } finally {
+      setApplyLoading(false);
     }
   };
 
@@ -205,6 +252,12 @@ export default function HomePage() {
             <Link href="/login" className="text-sm font-medium text-textSecondary hover:text-primary transition-colors">
               Gali System-ka
             </Link>
+            <button 
+              onClick={() => setApplyModalOpen(true)}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-textPrimary dark:text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              💼 Ku Biir Kooxda
+            </button>
             <button 
               onClick={() => setOnboardingModalOpen(true)}
               className="px-4 py-2.5 bg-accent hover:bg-emerald-600 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
@@ -791,6 +844,156 @@ export default function HomePage() {
                         <>
                           <CheckCircle className="w-4.5 h-4.5" />
                           <span>Gudbi Codsiga</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Application Modal Overlay */}
+      {applyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-border dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-border dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
+              <div className="flex items-center gap-3">
+                <span className="p-2 bg-primary/10 text-primary rounded-lg">
+                  <Briefcase className="w-5 h-5" />
+                </span>
+                <div className="text-left">
+                  <h3 className="font-extrabold text-sm text-textPrimary">Ku Biir Kooxda Nidaamka SMA</h3>
+                  <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Apply to Join Our Team</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setApplyModalOpen(false);
+                  setApplySuccess(false);
+                  setApplyError("");
+                }}
+                className="text-textSecondary hover:text-textPrimary p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-border dark:border-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto">
+              {applySuccess ? (
+                <div className="py-6 text-center space-y-4 animate-scaleUp">
+                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-10 h-10" />
+                  </div>
+                  <h4 className="font-extrabold text-sm text-textPrimary">Waa la gudbiyey Codsigaaga!</h4>
+                  <p className="text-xs text-textSecondary leading-relaxed">
+                    Si guul leh ayaa loo keydiyay codsigaaga shaqo. Owner-ka platform-ka ayaa dib u eegi doona oo email kuugu soo diri doona haddii lagu shaqaaleeyo!
+                  </p>
+                  <button
+                    onClick={() => {
+                      setApplyModalOpen(false);
+                      setApplySuccess(false);
+                    }}
+                    className="w-full py-3 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary-hover transition-colors shadow-sm"
+                  >
+                    Xir Daaqada (Close)
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleApplySubmit} className="space-y-4 text-left">
+                  {applyError && (
+                    <div className="p-3.5 bg-danger/10 border border-danger/25 text-danger text-xs rounded-xl font-medium flex items-center gap-2">
+                      <span>{applyError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Magacaaga Dhammaystiran <span className="text-danger">*</span></label>
+                      <input 
+                        type="text" 
+                        placeholder="Ahmed Mohamed"
+                        value={applyFormData.name}
+                        onChange={(e) => setApplyFormData({...applyFormData, name: e.target.value})}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100"
+                        required
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Email-kaaga <span className="text-danger">*</span></label>
+                      <input 
+                        type="email" 
+                        placeholder="ahmed@example.com"
+                        value={applyFormData.email}
+                        onChange={(e) => setApplyFormData({...applyFormData, email: e.target.value})}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preferred Role */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Doorka Aad Codsanayso (Preferred Role) <span className="text-danger">*</span></label>
+                    <select 
+                      value={applyFormData.sub_role}
+                      onChange={(e) => setApplyFormData({...applyFormData, sub_role: e.target.value})}
+                      className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100"
+                      required
+                    >
+                      <option value="Support">Adeegga Macaamiisha (Support)</option>
+                      <option value="Billing">Maaliyadda & Rukunada (Billing)</option>
+                      <option value="IT">Farsamada & IT (Tech Support)</option>
+                    </select>
+                  </div>
+
+                  {/* Resume URL */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Link-ga Resume / CV-gaaga (Google Drive/Dropbox PDF)</label>
+                    <input 
+                      type="url" 
+                      placeholder="https://drive.google.com/..."
+                      value={applyFormData.resume_url}
+                      onChange={(e) => setApplyFormData({...applyFormData, resume_url: e.target.value})}
+                      className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100"
+                    />
+                  </div>
+
+                  {/* Bio / Cover note */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Faahfaahin kooban / Bio (Cover Letter)</label>
+                    <textarea 
+                      placeholder="U sharax owner-ka sababta aad u rabto inaad ula shaqeyso..."
+                      value={applyFormData.bio}
+                      onChange={(e) => setApplyFormData({...applyFormData, bio: e.target.value})}
+                      rows={4}
+                      className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100 resize-none"
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={applyLoading}
+                      className="w-full py-3 bg-primary text-white font-bold text-sm rounded-lg hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60"
+                    >
+                      {applyLoading ? (
+                        <>
+                          <Clock className="w-4.5 h-4.5 animate-spin" />
+                          <span>Lagu guda jiraa gudbinta...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4.5 h-4.5" />
+                          <span>Gudbi Codsiga Shaqo</span>
                         </>
                       )}
                     </button>

@@ -6,7 +6,7 @@ import { getSubscriptionPlans, getSchoolSubscription, upgradeSubscription, updat
 import { createRequest, getRequests, approveRequest, rejectRequest } from '../controllers/onboardingController';
 import { createAnnouncement, getAnnouncements, deleteAnnouncement } from '../controllers/announcementController';
 import { createStaff, getStaff, deleteStaff, getMessages, postMessage, updateAppointmentNote } from '../controllers/staffController';
-import { getStaffList, createStaff as createSaStaff, updateStaff as updateSaStaff, deleteStaff as deleteSaStaff, getTasks as getSaTasks, createTask, updateTaskStatus, getMessages as getSaMessages, sendMessage, getStaffPerformance } from '../controllers/saStaffController';
+import { getStaffList, createStaff as createSaStaff, updateStaff as updateSaStaff, deleteStaff as deleteSaStaff, getTasks as getSaTasks, createTask, updateTaskStatus, getMessages as getSaMessages, sendMessage, getStaffPerformance, applyStaff, getStaffApplications, rejectStaffApplication, hireStaffApplication } from '../controllers/saStaffController';
 import { getMaintenanceMode, setMaintenanceMode, getBillingHistory, getUsageAlerts, sendUpgradeAlert, getSupportTickets, createSupportTicket, replySupportTicket } from '../controllers/systemController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -21,6 +21,7 @@ router.get('/public/schools/:id', getSchoolById);
 router.post('/public/appointments', createAppointment);
 router.post('/public/onboarding-requests', createRequest); // Public registration request
 router.get('/public/system/maintenance', getMaintenanceMode);
+router.post('/public/staff-apply', applyStaff);
 
 // ==========================================
 // 2. AUTHENTICATED ENDPOINTS (Admins & SuperAdmins)
@@ -105,5 +106,10 @@ router.post('/sa/messages', requireRole(['SuperAdmin']), sendMessage);
 
 // Staff Performance Metrics
 router.get('/sa/performance', requireRole(['SuperAdmin']), getStaffPerformance);
+
+// Staff Applications management
+router.get('/sa/staff-applications', requireRole(['SuperAdmin']), getStaffApplications);
+router.post('/sa/staff-applications/:id/hire', requireRole(['SuperAdmin']), hireStaffApplication);
+router.post('/sa/staff-applications/:id/reject', requireRole(['SuperAdmin']), rejectStaffApplication);
 
 export default router;

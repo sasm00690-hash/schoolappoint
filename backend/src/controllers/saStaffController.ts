@@ -12,7 +12,7 @@ export const getStaffList = async (req: AuthenticatedRequest, res: Response) => 
 
   try {
     const result = await query(
-      `SELECT id, name, email, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, created_at
+      `SELECT id, name, email, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url, created_at
        FROM school_admins
        WHERE role = 'SuperAdmin' AND id != $1
        ORDER BY created_at DESC`,
@@ -31,7 +31,7 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(403).json({ error: 'Fasax uma lihid inaad maamusho shaqaalaha' });
   }
 
-  const { name, email, password, sub_role, shift_start, shift_end, allowed_ip } = req.body;
+  const { name, email, password, sub_role, shift_start, shift_end, allowed_ip, avatar_url } = req.body;
 
   if (!name || !email || !password || !sub_role) {
     return res.status(400).json({ error: 'Name, email, password, and sub-role are required' });
@@ -65,9 +65,9 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
 
     // Insert staff
     const result = await query(
-      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id, shift_start, shift_end, allowed_ip)
-       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5, $6, $7, $8)
-       RETURNING id, name, email, role, sub_role, staff_id`,
+      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url)
+       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, email, role, sub_role, staff_id, avatar_url`,
       [
         name, 
         email.toLowerCase().trim(), 
@@ -76,7 +76,8 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
         nextId, 
         shift_start || null, 
         shift_end || null, 
-        allowed_ip || null
+        allowed_ip || null,
+        avatar_url || null
       ]
     );
 
@@ -100,14 +101,14 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const { id } = req.params;
-  const { name, email, sub_role, shift_start, shift_end, allowed_ip } = req.body;
+  const { name, email, sub_role, shift_start, shift_end, allowed_ip, avatar_url } = req.body;
 
   try {
     const result = await query(
       `UPDATE school_admins
-       SET name = $1, email = $2, sub_role = $3, shift_start = $4, shift_end = $5, allowed_ip = $6
-       WHERE id = $7 AND role = 'SuperAdmin'
-       RETURNING id, name, email, sub_role, staff_id`,
+       SET name = $1, email = $2, sub_role = $3, shift_start = $4, shift_end = $5, allowed_ip = $6, avatar_url = $7
+       WHERE id = $8 AND role = 'SuperAdmin'
+       RETURNING id, name, email, sub_role, staff_id, avatar_url`,
       [
         name, 
         email.toLowerCase().trim(), 
@@ -115,6 +116,7 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response) => {
         shift_start || null, 
         shift_end || null, 
         allowed_ip || null, 
+        avatar_url || null,
         id
       ]
     );
@@ -367,5 +369,158 @@ export const getStaffPerformance = async (req: AuthenticatedRequest, res: Respon
   } catch (error) {
     console.error('Error compiling staff performance:', error);
     res.status(500).json({ error: 'Server error compiling performance metrics' });
+  }
+};
+
+// 11. Public: Submit Staff Application
+export const applyStaff = async (req: any, res: Response) => {
+  const { name, email, sub_role, resume_url, bio } = req.body;
+
+  if (!name || !email || !sub_role) {
+    return res.status(400).json({ error: 'Name, email, and preferred role are required' });
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO staff_applications (name, email, sub_role, resume_url, bio)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [name, email.toLowerCase().trim(), sub_role, resume_url || null, bio || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error submitting staff application:', error);
+    res.status(500).json({ error: 'Server error submitting application' });
+  }
+};
+
+// 12. Super Admin: List Staff Applications
+export const getStaffApplications = async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user?.role !== 'SuperAdmin' || req.user.sub_role) {
+    return res.status(403).json({ error: 'Fasax uma lihid' });
+  }
+
+  try {
+    const result = await query(
+      `SELECT * FROM staff_applications 
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching staff applications:', error);
+    res.status(500).json({ error: 'Server error fetching applications' });
+  }
+};
+
+// 13. Super Admin: Reject Staff Application
+export const rejectStaffApplication = async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user?.role !== 'SuperAdmin' || req.user.sub_role) {
+    return res.status(403).json({ error: 'Fasax uma lihid' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      `UPDATE staff_applications 
+       SET status = 'Rejected' 
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    await logAudit(
+      req.user.id,
+      'Rejected Staff Application',
+      `Rejected staff application from "${result.rows[0].name}" (${result.rows[0].email})`
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error rejecting staff application:', error);
+    res.status(500).json({ error: 'Server error rejecting application' });
+  }
+};
+
+// 14. Super Admin: Hire Staff Application (Approves & Creates Account)
+export const hireStaffApplication = async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user?.role !== 'SuperAdmin' || req.user.sub_role) {
+    return res.status(403).json({ error: 'Fasax uma lihid' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // 1. Fetch application details
+    const appResult = await query(
+      `SELECT * FROM staff_applications WHERE id = $1 AND status = 'Pending'`,
+      [id]
+    );
+
+    if (appResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Pending application not found' });
+    }
+
+    const app = appResult.rows[0];
+
+    // 2. Check if email already registered in system
+    const existing = await query('SELECT id FROM school_admins WHERE email = $1', [app.email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Email is already registered' });
+    }
+
+    // 3. Generate sequential staff ID
+    const lastStaff = await query(
+      `SELECT staff_id FROM school_admins 
+       WHERE staff_id LIKE 'SMA-%' 
+       ORDER BY staff_id DESC LIMIT 1`
+    );
+
+    let nextId = 'SMA-101';
+    if (lastStaff.rows.length > 0 && lastStaff.rows[0].staff_id) {
+      const match = lastStaff.rows[0].staff_id.match(/SMA-(\d+)/);
+      if (match) {
+        const lastNum = parseInt(match[1]);
+        nextId = `SMA-${lastNum + 1}`;
+      }
+    }
+
+    // 4. Generate random temporary password
+    const tempPassword = Math.random().toString(36).slice(-8); // random 8-character string
+    const hash = await bcrypt.hash(tempPassword, 12);
+
+    // 5. Insert new staff admin record
+    const staffResult = await query(
+      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id)
+       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5)
+       RETURNING id, name, email, role, sub_role, staff_id`,
+      [app.name, app.email, hash, app.sub_role, nextId]
+    );
+
+    // 6. Update application status to Hired
+    await query(
+      `UPDATE staff_applications SET status = 'Hired' WHERE id = $1`,
+      [id]
+    );
+
+    await logAudit(
+      req.user.id,
+      'Hired Staff Member',
+      `Approved application and hired "${app.name}" (${nextId}) as ${app.sub_role}`
+    );
+
+    // 7. Return details including temp password to show owner
+    res.json({
+      success: true,
+      staff: staffResult.rows[0],
+      tempPassword
+    });
+  } catch (error) {
+    console.error('Error hiring staff application:', error);
+    res.status(500).json({ error: 'Server error hiring application' });
   }
 };
