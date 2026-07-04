@@ -472,6 +472,7 @@ export default function SuperAdminDashboardPage() {
   const [chatInput, setChatInput] = useState<string>("");
   const [saApplications, setSaApplications] = useState<any[]>([]);
   const [selectedStaffDetail, setSelectedStaffDetail] = useState<any | null>(null);
+  const [selectedAppDetail, setSelectedAppDetail] = useState<any | null>(null);
 
   const [staffFormData, setStaffFormData] = useState({
     name: "",
@@ -4331,24 +4332,33 @@ export default function SuperAdminDashboardPage() {
                               </a>
                             )}
                           </div>
-                          {app.status === "Pending" && (
-                            <div className="flex gap-2 shrink-0 w-full md:w-auto">
-                              <button
-                                type="button"
-                                onClick={() => handleRejectStaffApplication(app.id)}
-                                className="px-4 py-2 bg-white text-danger border border-danger/20 font-bold text-xs rounded-xl hover:bg-danger/5 transition-all w-full md:w-auto dark:bg-slate-900"
-                              >
-                                Diid (Reject)
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleHireStaffApplication(app.id)}
-                                className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary/95 transition-all shadow-md w-full md:w-auto flex items-center justify-center gap-1"
-                              >
-                                Shaqaalee (Hire)
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex gap-2 shrink-0 w-full md:w-auto flex-wrap md:flex-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAppDetail(app)}
+                              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-textPrimary dark:text-white border border-border dark:border-slate-850 font-bold text-xs rounded-xl transition-all w-full md:w-auto flex items-center justify-center gap-1"
+                            >
+                              🔍 Eeg Wareysiga & CV
+                            </button>
+                            {app.status === "Pending" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectStaffApplication(app.id)}
+                                  className="px-4 py-2 bg-white text-danger border border-danger/20 font-bold text-xs rounded-xl hover:bg-danger/5 transition-all w-full md:w-auto dark:bg-slate-900"
+                                >
+                                  Diid (Reject)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleHireStaffApplication(app.id)}
+                                  className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary/95 transition-all shadow-md w-full md:w-auto flex items-center justify-center gap-1"
+                                >
+                                  Shaqaalee (Hire)
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}
@@ -4672,6 +4682,125 @@ export default function SuperAdminDashboardPage() {
               >
                 Xir (Close Profile)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Candidate Interview Q&A Modal Overlay */}
+      {selectedAppDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-border dark:border-slate-850 rounded-2xl p-6 max-w-xl w-full mx-4 shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto animate-scaleIn">
+            <div className="flex justify-between items-start border-b border-border dark:border-slate-800 pb-3 bg-slate-50 dark:bg-slate-950 p-4 -mx-6 -mt-6 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-left">
+                <span className="p-2 bg-primary/10 text-primary rounded-lg">
+                  <Briefcase className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-sm text-textPrimary">{selectedAppDetail.name}</h3>
+                  <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">
+                    Role Requested: <span className="text-primary">{selectedAppDetail.sub_role}</span> • {selectedAppDetail.email}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedAppDetail(null)}
+                className="text-textSecondary hover:text-textPrimary p-1 bg-white dark:bg-slate-900 rounded-lg border border-border dark:border-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Q&A List */}
+            <div className="space-y-4 text-left">
+              <h4 className="font-extrabold text-xs text-textPrimary uppercase tracking-wider border-b border-border dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                📝 Jawaabaha Wareysiga (Interview Screening Responses)
+              </h4>
+
+              {/* Experience Answer */}
+              <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950/60 border border-border dark:border-slate-850 rounded-xl">
+                <h5 className="font-bold text-xs text-textPrimary">1. Khibradaada shaqo ee la xiriirta doorkan iyo sababta aad noogu soo biirayso:</h5>
+                <p className="text-xs text-textSecondary leading-relaxed italic bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-border dark:border-slate-800">
+                  "{selectedAppDetail.experience_ans || "N/A"}"
+                </p>
+              </div>
+
+              {/* Scenario Answer */}
+              <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950/60 border border-border dark:border-slate-850 rounded-xl">
+                <h5 className="font-bold text-xs text-textPrimary">
+                  2. Xaalad Adag: {selectedAppDetail.sub_role === "Support" 
+                    ? "Macmiil caraysan oo nidaamku ka xumaaday sidee u xalin lahayd?"
+                    : selectedAppDetail.sub_role === "Billing"
+                      ? "Iskuul labo jeer lacag laga jaray sidee u baaraysaa?"
+                      : "Server-ku haddii uu istaago maxay tahay tillaabada koobaad ee aad qaadi lahayd?"
+                  }
+                </h5>
+                <p className="text-xs text-textSecondary leading-relaxed italic bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-border dark:border-slate-800">
+                  "{selectedAppDetail.scenario_ans || "N/A"}"
+                </p>
+              </div>
+
+              {/* Availability Answer */}
+              <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950/60 border border-border dark:border-slate-850 rounded-xl">
+                <h5 className="font-bold text-xs text-textPrimary">3. Helitaankaaga waqtiyada habeenkii ama weekends-ka:</h5>
+                <p className="text-xs text-textSecondary leading-relaxed italic bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-border dark:border-slate-800">
+                  "{selectedAppDetail.availability_ans || "N/A"}"
+                </p>
+              </div>
+
+              {/* Cover Bio */}
+              {selectedAppDetail.bio && (
+                <div className="space-y-1 p-3 border border-border dark:border-slate-855 rounded-xl bg-white dark:bg-slate-900">
+                  <h5 className="font-bold text-[10px] text-textSecondary uppercase">Cover Letter / Fariinta Musharaxa:</h5>
+                  <p className="text-xs text-textSecondary leading-relaxed">
+                    {selectedAppDetail.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Resume attachment */}
+              {selectedAppDetail.resume_url && (
+                <div className="pt-1">
+                  <a 
+                    href={selectedAppDetail.resume_url} target="_blank" rel="noreferrer"
+                    className="w-full py-2.5 bg-primary/10 text-primary hover:bg-primary/15 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 border border-primary/20 transition-all"
+                  >
+                    📎 Eeg Warqada Codsiga / Resume (Open Attachment)
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="pt-2 flex gap-3">
+              <button 
+                onClick={() => setSelectedAppDetail(null)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-textPrimary font-bold text-xs rounded-xl transition-all dark:bg-slate-950 dark:hover:bg-slate-900"
+              >
+                Xir Daaqada (Close)
+              </button>
+              {selectedAppDetail.status === "Pending" && (
+                <>
+                  <button 
+                    onClick={() => {
+                      handleRejectStaffApplication(selectedAppDetail.id);
+                      setSelectedAppDetail(null);
+                    }}
+                    className="w-full py-2.5 bg-danger text-white hover:bg-danger/95 font-bold text-xs rounded-xl transition-all shadow-sm"
+                  >
+                    Diid Codsiga (Reject)
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleHireStaffApplication(selectedAppDetail.id);
+                      setSelectedAppDetail(null);
+                    }}
+                    className="w-full py-2.5 bg-accent text-white hover:bg-emerald-600 font-bold text-xs rounded-xl transition-all shadow-sm"
+                  >
+                    Shaqaalee (Hire)
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

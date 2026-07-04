@@ -374,7 +374,7 @@ export const getStaffPerformance = async (req: AuthenticatedRequest, res: Respon
 
 // 11. Public: Submit Staff Application
 export const applyStaff = async (req: any, res: Response) => {
-  const { name, email, sub_role, resume_url, bio } = req.body;
+  const { name, email, sub_role, resume_url, bio, experience_ans, scenario_ans, availability_ans } = req.body;
 
   if (!name || !email || !sub_role) {
     return res.status(400).json({ error: 'Name, email, and preferred role are required' });
@@ -382,10 +382,19 @@ export const applyStaff = async (req: any, res: Response) => {
 
   try {
     const result = await query(
-      `INSERT INTO staff_applications (name, email, sub_role, resume_url, bio)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO staff_applications (name, email, sub_role, resume_url, bio, experience_ans, scenario_ans, availability_ans)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [name, email.toLowerCase().trim(), sub_role, resume_url || null, bio || null]
+      [
+        name, 
+        email.toLowerCase().trim(), 
+        sub_role, 
+        resume_url || null, 
+        bio || null,
+        experience_ans || null,
+        scenario_ans || null,
+        availability_ans || null
+      ]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {

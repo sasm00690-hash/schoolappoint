@@ -71,7 +71,10 @@ export default function HomePage() {
     email: "",
     sub_role: "Support",
     resume_url: "",
-    bio: ""
+    bio: "",
+    experience_ans: "",
+    scenario_ans: "",
+    availability_ans: ""
   });
 
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
@@ -146,7 +149,10 @@ export default function HomePage() {
         email: "",
         sub_role: "Support",
         resume_url: "",
-        bio: ""
+        bio: "",
+        experience_ans: "",
+        scenario_ans: "",
+        availability_ans: ""
       });
     } catch (err: any) {
       setApplyError(err.message || "Cillad dhinaca server-ka ah ayaa dhacday.");
@@ -976,6 +982,61 @@ export default function HomePage() {
                       rows={4}
                       className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100 resize-none"
                     />
+                  </div>
+
+                  {/* Screening Questions section */}
+                  <div className="border-t border-border dark:border-slate-800 pt-4 space-y-4">
+                    <h4 className="font-extrabold text-xs text-primary uppercase tracking-wider">Su'aalaha Baaritaanka (Screening Interview Questions)</h4>
+                    
+                    {/* Q1: Experience */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-textPrimary dark:text-slate-300">
+                        1. Magacaw doorkii kuugu dambeeyey ee aad kaga shaqaysay qaybtan, iyo sababta aad noogu soo biirayso? <span className="text-danger">*</span>
+                      </label>
+                      <textarea 
+                        required
+                        placeholder="Qor khibradaada ku haboon doorkan..."
+                        value={applyFormData.experience_ans || ""}
+                        onChange={(e) => setApplyFormData({...applyFormData, experience_ans: e.target.value})}
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100 resize-none"
+                      />
+                    </div>
+
+                    {/* Q2: Scenario based on role */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-textPrimary dark:text-slate-300">
+                        2. {applyFormData.sub_role === "Support" 
+                          ? "Macmiil (Iskuul Admin) oo caraysan ayaa ku soo wacay sheegayna in nidaamka ballamuhu ka xumaaday. Sidee u xalin lahayd?"
+                          : applyFormData.sub_role === "Billing"
+                            ? "Iskuul ayaa ka cabanaya in labo jeer laga jaray lacagta rukunka bishan. Sidee u baaraysaa arrintaan?"
+                            : "Server-kii guud ee nidaamka ayaa gaabiyey ama istaagay. Maxay tahay tillaabada ugu horreysa ee aad qaadi lahayd?"
+                        } <span className="text-danger">*</span>
+                      </label>
+                      <textarea 
+                        required
+                        placeholder="Qor sida aad u xalin lahayd xaaladan kor ku xusan..."
+                        value={applyFormData.scenario_ans || ""}
+                        onChange={(e) => setApplyFormData({...applyFormData, scenario_ans: e.target.value})}
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100 resize-none"
+                      />
+                    </div>
+
+                    {/* Q3: Availability */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-textPrimary dark:text-slate-300">
+                        3. Nidaamkeenu wuxuu shaqeeyaa 24/7. Ma heli karnaa waqtiyada habeenkii ama weekends-ka haddii loo baahdo? <span className="text-danger">*</span>
+                      </label>
+                      <textarea 
+                        required
+                        placeholder="Qor helitaankaaga iyo waqtiyada aad shaqayn karto..."
+                        value={applyFormData.availability_ans || ""}
+                        onChange={(e) => setApplyFormData({...applyFormData, availability_ans: e.target.value})}
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border dark:border-slate-800 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-textPrimary dark:text-slate-100 resize-none"
+                      />
+                    </div>
                   </div>
 
                   {/* Submit Button */}
