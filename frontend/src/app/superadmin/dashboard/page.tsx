@@ -2004,100 +2004,120 @@ export default function SuperAdminDashboardPage() {
   const isBilling = user?.sub_role === "Billing";
   const isIT = user?.sub_role === "IT";
 
-  const navItems = [
+  const navGroups = [
     {
-      id: "overview",
-      label: t.overview,
-      icon: <TrendingUp className="w-4 h-4" />,
-      visible: true
+      title: lang === "so" ? "Guudmarka" : "Overview",
+      items: [
+        {
+          id: "overview",
+          label: t.overview,
+          icon: <TrendingUp className="w-4 h-4" />,
+          visible: true
+        }
+      ]
     },
     {
-      id: "schools",
-      label: t.schools,
-      icon: <Building2 className="w-4 h-4" />,
-      badge: schools.length,
-      visible: isOwner || isBilling
+      title: lang === "so" ? "Maamulka Iskuulada" : "School Management",
+      items: [
+        {
+          id: "schools",
+          label: t.schools,
+          icon: <Building2 className="w-4 h-4" />,
+          badge: schools.length,
+          visible: isOwner || isBilling
+        },
+        {
+          id: "pending",
+          label: t.pendingRequests,
+          icon: <Bell className="w-4 h-4" />,
+          badge: pendingRequests.filter(r => r.status === "Pending").length,
+          badgeColor: "amber",
+          visible: isOwner || isSupport
+        },
+        {
+          id: "admins",
+          label: t.admins,
+          icon: <UserPlus className="w-4 h-4" />,
+          visible: isOwner
+        },
+        {
+          id: "subscriptions",
+          label: t.subscriptions,
+          icon: <DollarSign className="w-4 h-4" />,
+          visible: isOwner || isBilling
+        },
+        {
+          id: "billing",
+          label: t.billing,
+          icon: <DollarSign className="w-4 h-4" />,
+          badge: billingInvoices.length,
+          visible: isOwner || isBilling
+        }
+      ]
     },
     {
-      id: "pending",
-      label: t.pendingRequests,
-      icon: <Bell className="w-4 h-4" />,
-      badge: pendingRequests.filter(r => r.status === "Pending").length,
-      badgeColor: "amber",
-      visible: isOwner || isSupport
+      title: lang === "so" ? "Kooxda & Chat-ka" : "Team & Chat",
+      items: [
+        {
+          id: "team",
+          label: lang === "so" ? "Maamulista Shaqaalaha" : "Team Management",
+          icon: <Briefcase className="w-4 h-4" />,
+          visible: isOwner
+        },
+        {
+          id: "support",
+          label: t.supportHelp,
+          icon: <Users className="w-4 h-4" />,
+          badge: tickets.filter(tk => tk.status === "Pending").length,
+          badgeColor: "amber",
+          visible: isOwner || isSupport
+        },
+        {
+          id: "messages",
+          label: lang === "so" ? "Farriimaha Team-ka" : "Team Messages",
+          icon: <MessageSquare className="w-4 h-4" />,
+          visible: true
+        }
+      ]
     },
     {
-      id: "team",
-      label: lang === "so" ? "Maamulista Shaqaalaha" : "Team Management",
-      icon: <Briefcase className="w-4 h-4" />,
-      visible: isOwner
-    },
-    {
-      id: "admins",
-      label: t.admins,
-      icon: <UserPlus className="w-4 h-4" />,
-      visible: isOwner
-    },
-    {
-      id: "subscriptions",
-      label: t.subscriptions,
-      icon: <DollarSign className="w-4 h-4" />,
-      visible: isOwner || isBilling
-    },
-    {
-      id: "announcements",
-      label: t.announcements,
-      icon: <BookOpen className="w-4 h-4" />,
-      badge: announcements.length,
-      visible: isOwner || isSupport || isIT
-    },
-    {
-      id: "audit",
-      label: t.auditLogs,
-      icon: <Activity className="w-4 h-4" />,
-      visible: isOwner || isIT
-    },
-    {
-      id: "sessions",
-      label: lang === "so" ? "Dhaqdhaqaaqa Users-ka" : t.sessions,
-      icon: <Users className="w-4 h-4" />,
-      visible: isOwner || isIT
-    },
-    {
-      id: "billing",
-      label: t.billing,
-      icon: <DollarSign className="w-4 h-4" />,
-      badge: billingInvoices.length,
-      visible: isOwner || isBilling
-    },
-    {
-      id: "maintenance",
-      label: t.maintenance,
-      icon: <Settings className="w-4 h-4" />,
-      pulse: maintenanceMode,
-      visible: isOwner || isIT
-    },
-    {
-      id: "alerts",
-      label: t.usageAlertsTab,
-      icon: <AlertCircle className="w-4 h-4" />,
-      badge: usageAlerts.filter(a => a.percentage >= 85).length,
-      badgeColor: "danger",
-      visible: isOwner || isBilling
-    },
-    {
-      id: "support",
-      label: t.supportHelp,
-      icon: <Users className="w-4 h-4" />,
-      badge: tickets.filter(tk => tk.status === "Pending").length,
-      badgeColor: "amber",
-      visible: isOwner || isSupport
-    },
-    {
-      id: "messages",
-      label: lang === "so" ? "Farriimaha Team-ka" : "Team Messages",
-      icon: <MessageSquare className="w-4 h-4" />,
-      visible: true
+      title: lang === "so" ? "Farsamada & Amniga" : "System & Security",
+      items: [
+        {
+          id: "announcements",
+          label: t.announcements,
+          icon: <BookOpen className="w-4 h-4" />,
+          badge: announcements.length,
+          visible: isOwner || isSupport || isIT
+        },
+        {
+          id: "audit",
+          label: t.auditLogs,
+          icon: <Activity className="w-4 h-4" />,
+          visible: isOwner || isIT
+        },
+        {
+          id: "sessions",
+          label: lang === "so" ? "Dhaqdhaqaaqa Users-ka" : t.sessions,
+          icon: <Users className="w-4 h-4" />,
+          visible: isOwner || isIT
+        },
+        {
+          id: "maintenance",
+          label: t.maintenance,
+          icon: <Settings className="w-4 h-4" />,
+          pulse: maintenanceMode,
+          visible: isOwner || isIT
+        },
+        {
+          id: "alerts",
+          label: t.usageAlertsTab,
+          icon: <AlertCircle className="w-4 h-4" />,
+          badge: usageAlerts.filter(a => a.percentage >= 85).length,
+          badgeColor: "danger",
+          visible: isOwner || isBilling
+        }
+      ]
     }
   ];
 
@@ -2150,35 +2170,46 @@ export default function SuperAdminDashboardPage() {
       <div className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-8">
         {/* Sidebar Nav */}
         <aside className="w-full md:w-64 shrink-0 space-y-1">
-          {navItems.filter(item => item.visible).map(item => (
-            <button 
-              key={item.id}
-              onClick={() => { setActiveTab(item.id as any); setMsg(""); setErr(""); }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                activeTab === item.id 
-                  ? "bg-primary text-white shadow-sm" 
-                  : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {item.icon} <span>{item.label}</span>
-              </div>
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold ${
-                  item.badgeColor === "danger" 
-                    ? "bg-danger text-white" 
-                    : item.badgeColor === "amber" 
-                      ? "bg-amber-500 text-white animate-pulse" 
-                      : "bg-slate-100 dark:bg-slate-800 text-textSecondary"
-                }`}>
-                  {item.badge}
+          {navGroups.map((group, groupIdx) => {
+            const visibleItems = group.items.filter(item => item.visible);
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={groupIdx} className="space-y-1.5 pb-2">
+                <span className="block px-4 pt-3 pb-1 text-[9px] font-extrabold uppercase tracking-wider text-textSecondary/50 dark:text-slate-500/80">
+                  {group.title}
                 </span>
-              )}
-              {item.pulse && (
-                <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
-              )}
-            </button>
-          ))}
+                {visibleItems.map(item => (
+                  <button 
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id as any); setMsg(""); setErr(""); }}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === item.id 
+                        ? "bg-primary text-white shadow-soft" 
+                        : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850 hover:text-textPrimary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon} <span>{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className={`px-2 py-0.5 text-[9px] rounded-full font-bold ${
+                        item.badgeColor === "danger" 
+                          ? "bg-danger text-white" 
+                          : item.badgeColor === "amber" 
+                            ? "bg-amber-500 text-white animate-pulse" 
+                            : "bg-slate-100 dark:bg-slate-800 text-textSecondary"
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                    {item.pulse && (
+                      <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </aside>
 
         {/* Workspace Panels */}
