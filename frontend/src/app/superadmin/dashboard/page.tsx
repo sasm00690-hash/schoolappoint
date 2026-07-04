@@ -4045,6 +4045,82 @@ export default function SuperAdminDashboardPage() {
                   )}
                 </div>
               </div>
+
+              {/* Staff Attendance Timesheet */}
+              <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                <h3 className="font-extrabold text-sm text-textPrimary">Diiwaanka Imaanshaha & Saacadaha Shaqada (Staff Attendance Timesheet)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-border dark:border-slate-800 text-[10px] text-textSecondary uppercase tracking-wider font-bold">
+                        <th className="pb-3">Shaqaalaha (Staff ID)</th>
+                        <th className="pb-3">Maalinta (Date)</th>
+                        <th className="pb-3">Shift Plan</th>
+                        <th className="pb-3">Clock In</th>
+                        <th className="pb-3">Clock Out</th>
+                        <th className="pb-3">Work Duration</th>
+                        <th className="pb-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border dark:divide-slate-800 text-xs">
+                      {userSessions.filter(s => s.user_role?.startsWith("SuperAdmin (")).length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-textSecondary font-medium">Ma jiraan wax saacado shaqo ah oo la diiwaangeliyey.</td>
+                        </tr>
+                      ) : (
+                        userSessions.filter(s => s.user_role?.startsWith("SuperAdmin (")).map((sess, idx) => {
+                          const st = saStaff.find(item => item.id === sess.user_id);
+                          const shiftStart = st?.shift_start;
+                          let statusText = "On Time";
+                          let statusColor = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
+                          if (shiftStart) {
+                            const loginTime = new Date(sess.login_time);
+                            const [sHour, sMin] = shiftStart.split(":");
+                            const loginMin = loginTime.getHours() * 60 + loginTime.getMinutes();
+                            const shiftMin = parseInt(sHour) * 60 + parseInt(sMin);
+                            if (loginMin > shiftMin + 15) {
+                              statusText = lang === "so" ? "Dahay (Late)" : "Late";
+                              statusColor = "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+                            }
+                          }
+                          if (!sess.logout_time) {
+                            statusText = lang === "so" ? "Shaqaynaya (Live)" : "Active";
+                            statusColor = "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 animate-pulse";
+                          }
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                              <td className="py-3.5 font-bold text-textPrimary">
+                                {sess.user_name}
+                                <span className="block text-[10px] text-textSecondary font-mono font-normal">ID: {st?.staff_id || "SMA-000"}</span>
+                              </td>
+                              <td className="py-3.5 text-textSecondary font-medium">
+                                {new Date(sess.login_time).toLocaleDateString()}
+                              </td>
+                              <td className="py-3.5 text-textSecondary font-bold">
+                                {st?.shift_start && st?.shift_end ? `${st.shift_start} - ${st.shift_end}` : "24/7 (Open)"}
+                              </td>
+                              <td className="py-3.5 text-textSecondary font-medium">
+                                {new Date(sess.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="py-3.5 text-textSecondary font-medium">
+                                {sess.logout_time ? new Date(sess.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}
+                              </td>
+                              <td className="py-3.5 font-bold text-textPrimary">
+                                {sess.duration_minutes !== null ? `${sess.duration_minutes} min` : "--"}
+                              </td>
+                              <td className="py-3.5 text-right">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor}`}>
+                                  {statusText}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
