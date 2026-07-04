@@ -32,7 +32,8 @@ import {
   Clock,
   ListTodo,
   CheckSquare,
-  Briefcase
+  Briefcase,
+  User
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -447,7 +448,7 @@ const COLORS = ["#0f4c81", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "schools" | "pending" | "admins" | "subscriptions" | "announcements" | "audit" | "sessions" | "billing" | "maintenance" | "alerts" | "support" | "team" | "messages">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "profile" | "schools" | "pending" | "admins" | "subscriptions" | "announcements" | "audit" | "sessions" | "billing" | "maintenance" | "alerts" | "support" | "team" | "messages">("overview");
   const [overviewSubTab, setOverviewSubTab] = useState<"schools" | "team">("schools");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -2013,6 +2014,12 @@ export default function SuperAdminDashboardPage() {
           label: t.overview,
           icon: <TrendingUp className="w-4 h-4" />,
           visible: true
+        },
+        {
+          id: "profile",
+          label: lang === "so" ? "Profile-kayga" : "My Profile",
+          icon: <User className="w-4 h-4" />,
+          visible: true
         }
       ]
     },
@@ -2225,6 +2232,136 @@ export default function SuperAdminDashboardPage() {
             <div className="p-4 bg-danger/10 text-danger border border-danger/20 rounded-xl text-sm flex items-center gap-3 animate-fadeIn">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{err}</span>
+            </div>
+          )}
+
+          {/* Tab: profile (Koontada & Diiwaanka Shaqaalaha) */}
+          {activeTab === "profile" && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Header */}
+              <div className="space-y-1">
+                <h2 className="text-xl font-extrabold text-textPrimary">{lang === "so" ? "Profile-ka Isticmaalaha" : "User Profile & Sessions"}</h2>
+                <p className="text-xs text-textSecondary">{lang === "so" ? "Halkan ka eeg xogtaada khaaska ah, saacadaha shift-ga, iyo taariikhda soo-gelitaankaaga." : "View your credentials, shifts, and recent session attendance logs."}</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Column 1: Info Card */}
+                <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-6 dark:bg-slate-900 dark:border-slate-800">
+                  <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-border dark:border-slate-800">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-indigo-600 text-white flex items-center justify-center text-3xl font-bold shadow-soft">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-base text-textPrimary">{user.name}</h3>
+                      <span className="px-2.5 py-0.5 text-[9px] bg-primary/10 text-primary border border-primary/20 rounded-full font-bold uppercase tracking-wider mt-1 inline-block">
+                        {user.sub_role ? user.sub_role : "Super Admin (Owner)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">ID-ga Nidaamka (Staff ID)</span>
+                      <span className="font-mono text-textPrimary font-bold">{user.staff_id || "OWNER-001"}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">Email-ka Rasmiga ah</span>
+                      <span className="text-textPrimary font-semibold">{user.email}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">Xilliga Shift-ga (Shift Hours)</span>
+                      <span className="text-textPrimary font-semibold">
+                        {user.shift_start && user.shift_end ? `${user.shift_start} - ${user.shift_end}` : "24/7 (Any time)"}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">IP Address-ka Loo Oggol yahay</span>
+                      <span className="font-mono text-textPrimary font-semibold">{user.allowed_ip || "Any IP (No Lock)"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 2 & 3: Sessions & Tasks */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* My Tasks */}
+                  {!isOwner && (
+                    <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                      <h3 className="font-extrabold text-sm text-textPrimary flex items-center gap-2">
+                        <ListTodo className="w-4 h-4 text-primary" />
+                        {lang === "so" ? "Hawlaha la ii Qoondeeyay (My Tasks)" : "My Assigned Tasks"}
+                      </h3>
+                      <div className="space-y-2.5">
+                        {saTasks.filter(t => t.assigned_to === user.id).length === 0 ? (
+                          <p className="text-xs text-textSecondary italic">{lang === "so" ? "Ma jiraan wax hawlo ah oo laguu xilsaaray hadda." : "No tasks assigned to you currently."}</p>
+                        ) : (
+                          saTasks.filter(t => t.assigned_to === user.id).map(t => {
+                            const isCompleted = t.status === "Completed";
+                            return (
+                              <div key={t.id} className="p-3 border border-border rounded-xl bg-slate-50 dark:bg-slate-950/40 flex justify-between items-center gap-3">
+                                <div className="space-y-0.5">
+                                  <h4 className={`font-bold text-xs text-textPrimary ${isCompleted ? "line-through opacity-50" : ""}`}>{t.title}</h4>
+                                  <p className="text-[10px] text-textSecondary">{t.description}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateTaskStatus(t.id, t.status)}
+                                  className={`p-1 rounded-lg border transition-all ${
+                                    isCompleted 
+                                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                                      : "bg-white border-border text-textSecondary hover:bg-slate-100 dark:bg-slate-900"
+                                  }`}
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attendance Log */}
+                  <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                    <h3 className="font-extrabold text-sm text-textPrimary flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      {lang === "so" ? "Diiwaanka Soo-gelitaankaaga (Attendance Logs)" : "Your Attendance History"}
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-border dark:border-slate-800 text-[9px] text-textSecondary uppercase tracking-wider font-bold">
+                            <th className="pb-2">Login Time</th>
+                            <th className="pb-2">Logout Time</th>
+                            <th className="pb-2">Duration</th>
+                            <th className="pb-2">IP Address</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border dark:divide-slate-800 text-xs">
+                          {userSessions.filter(s => s.user_id === user.id).length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="py-4 text-center text-textSecondary font-medium">No login sessions recorded yet.</td>
+                            </tr>
+                          ) : (
+                            userSessions.filter(s => s.user_id === user.id).slice(0, 10).map((sess, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                                <td className="py-2.5 font-medium text-textPrimary">{new Date(sess.login_time).toLocaleString()}</td>
+                                <td className="py-2.5 text-textSecondary">
+                                  {sess.logout_time ? new Date(sess.logout_time).toLocaleString() : <span className="text-emerald-500 font-bold">Active Now</span>}
+                                </td>
+                                <td className="py-2.5 font-bold text-textPrimary">
+                                  {sess.duration_minutes !== null ? `${sess.duration_minutes} min` : "--"}
+                                </td>
+                                <td className="py-2.5 font-mono text-[10px] text-textSecondary">{sess.ip_address}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
