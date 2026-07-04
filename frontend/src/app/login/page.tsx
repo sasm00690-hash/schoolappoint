@@ -136,15 +136,15 @@ export default function LoginPage() {
           <div className="p-8 bg-white dark:bg-slate-900 border border-border dark:border-slate-800 rounded-card shadow-soft">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Email-kaaga</label>
+                <label className="text-xs font-bold text-textPrimary dark:text-slate-300">Email-kaaga ama ID-gaaga (SMA-ID)</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-textSecondary dark:text-slate-500" />
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tusaale@iskuul.com"
+                    placeholder="tusaale@iskuul.com ama SMA-101"
                     className="w-full pl-10 pr-4 py-2.5 bg-background dark:bg-slate-950 border border-border dark:border-slate-850 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary transition-all dark:text-slate-100 dark:focus:ring-blue-500/20"
                   />
                 </div>

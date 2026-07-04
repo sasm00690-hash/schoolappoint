@@ -8,6 +8,8 @@ export interface UserPayload {
   school_id: string | null;
   email: string;
   role: 'Admin' | 'SuperAdmin' | 'Scanner';
+  sub_role?: string;
+  staff_id?: string;
 }
 
 export interface AuthenticatedRequest extends Request {

@@ -14,14 +14,16 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
+  const ident = email.toLowerCase().trim();
+
   try {
     // Fetch user and check school status if not super admin
     const userResult = await query(
       `SELECT sa.*, s.name as school_name, s.admission_status, s.logo_url 
        FROM school_admins sa
        LEFT JOIN schools s ON sa.school_id = s.id
-       WHERE sa.email = $1`,
-      [email.toLowerCase()]
+       WHERE sa.email = $1 OR LOWER(sa.staff_id) = $1`,
+      [ident]
     );
 
     if (userResult.rows.length === 0) {
@@ -29,6 +31,34 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const user = userResult.rows[0];
+
+    // 1. Shift Schedule Restriction Check
+    if (user.shift_start && user.shift_end) {
+      const now = new Date();
+      const currentStr = now.toTimeString().split(' ')[0]; // "HH:MM:SS"
+      const start = user.shift_start;
+      const end = user.shift_end;
+      
+      let isWithinShift = false;
+      if (start <= end) {
+        isWithinShift = currentStr >= start && currentStr <= end;
+      } else {
+        // Overnight shift (e.g. 22:00:00 to 06:00:00)
+        isWithinShift = currentStr >= start || currentStr <= end;
+      }
+      
+      if (!isWithinShift) {
+        return res.status(403).json({ error: `Shift-gaaga shaqo wuxuu ku eg yahay ${start} ilaa ${end}. Hadda ma soo geli kartid.` });
+      }
+    }
+
+    // 2. IP Address Restriction Check
+    if (user.allowed_ip && user.allowed_ip.trim() !== '') {
+      const clientIp = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim();
+      if (clientIp !== user.allowed_ip && !clientIp.includes(user.allowed_ip)) {
+        return res.status(403).json({ error: `Cinwaankaaga IP-ga (${clientIp}) looma oggola inuu ka soo galo koontadan.` });
+      }
+    }
 
     // Check password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -42,13 +72,15 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
         id: user.id,
         school_id: user.school_id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        sub_role: user.sub_role,
+        staff_id: user.staff_id
       },
       JWT_SECRET,
       { expiresIn: '365d' }
     );
 
-    await logAudit(user.id, 'User Login', `Logged in user: ${user.name} (${user.email})`);
+    await logAudit(user.id, 'User Login', `Logged in user: ${user.name} (${user.staff_id || user.email})`);
 
     // Insert session record
     let sessionId = null;
@@ -57,7 +89,13 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
         `INSERT INTO user_sessions (user_id, user_name, user_email, user_role, school_name)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-        [user.id, user.name, user.email, user.role, user.school_name || 'System Admin']
+        [
+          user.id, 
+          user.name, 
+          user.staff_id || user.email, 
+          user.sub_role ? `SuperAdmin (${user.sub_role})` : user.role, 
+          user.school_name || 'System Admin'
+        ]
       );
       sessionId = sessionResult.rows[0]?.id;
     } catch (sessionErr) {
@@ -72,6 +110,8 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        sub_role: user.sub_role,
+        staff_id: user.staff_id,
         school_id: user.school_id,
         school_name: user.school_name,
         logo_url: user.logo_url
@@ -209,4 +249,24 @@ export const getSystemUsers = async (req: AuthenticatedRequest, res: Response) =
     console.error('Error fetching system users:', error);
     res.status(500).json({ error: 'Server error fetching system users' });
   }
+};
+
+export const logout = async (req: AuthenticatedRequest, res: Response) => {
+  const { sessionId } = req.body;
+
+  if (sessionId) {
+    try {
+      await query(
+        `UPDATE user_sessions 
+         SET logout_time = CURRENT_TIMESTAMP,
+             duration_minutes = CEIL(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - login_time)) / 60.0)
+         WHERE id = $1`,
+        [sessionId]
+      );
+    } catch (error) {
+      console.error('Error logging logout:', error);
+    }
+  }
+
+  res.json({ success: true });
 };

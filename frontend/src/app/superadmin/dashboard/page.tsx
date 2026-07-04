@@ -27,7 +27,12 @@ import {
   Layers,
   Check,
   Info,
-  Key
+  Key,
+  MessageSquare,
+  Clock,
+  ListTodo,
+  CheckSquare,
+  Briefcase
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -442,9 +447,33 @@ const COLORS = ["#0f4c81", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "schools" | "pending" | "admins" | "subscriptions" | "announcements" | "audit" | "sessions" | "billing" | "maintenance" | "alerts" | "support">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "schools" | "pending" | "admins" | "subscriptions" | "announcements" | "audit" | "sessions" | "billing" | "maintenance" | "alerts" | "support" | "team" | "messages">("overview");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+
+  // Staff & Team Management State
+  const [saStaff, setSaStaff] = useState<any[]>([]);
+  const [saTasks, setSaTasks] = useState<any[]>([]);
+  const [saPerformance, setSaPerformance] = useState<any>(null);
+  const [saMessages, setSaMessages] = useState<any[]>([]);
+  const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState<string>("");
+
+  const [staffFormData, setStaffFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    sub_role: "Support",
+    shift_start: "",
+    shift_end: "",
+    allowed_ip: ""
+  });
+
+  const [taskFormData, setTaskFormData] = useState({
+    assigned_to: "",
+    title: "",
+    description: ""
+  });
 
   // Lists
   const [schools, setSchools] = useState<School[]>([]);
@@ -659,7 +688,10 @@ export default function SuperAdminDashboardPage() {
         fetchBillingHistory(),
         fetchMaintenanceStatus(),
         fetchUsageAlerts(),
-        fetchSupportTickets()
+        fetchSupportTickets(),
+        fetchSaStaff(),
+        fetchSaTasks(),
+        fetchSaPerformance()
       ]);
     } catch (error) {
       console.error(error);
@@ -667,6 +699,81 @@ export default function SuperAdminDashboardPage() {
       setLoading(false);
     }
   };
+
+  const fetchSaStaff = async () => {
+    if (!token || user?.sub_role) return;
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) setSaStaff(await res.json());
+    } catch (e) {
+      console.error("Error fetching staff:", e);
+    }
+  };
+
+  const fetchSaTasks = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/sa/tasks`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) setSaTasks(await res.json());
+    } catch (e) {
+      console.error("Error fetching tasks:", e);
+    }
+  };
+
+  const fetchSaPerformance = async () => {
+    if (!token || user?.sub_role) return;
+    try {
+      const res = await fetch(`${API_BASE}/sa/performance`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) setSaPerformance(await res.json());
+    } catch (e) {
+      console.error("Error fetching performance metrics:", e);
+    }
+  };
+
+  // Safely redirect non-permitted active tabs for staff roles
+  useEffect(() => {
+    if (!user) return;
+    const sub_role = user.sub_role;
+    if (sub_role) {
+      if (sub_role === "Support" && !["overview", "pending", "announcements", "support", "messages"].includes(activeTab)) {
+        setActiveTab("overview");
+      }
+      if (sub_role === "Billing" && !["overview", "schools", "subscriptions", "billing", "alerts", "messages"].includes(activeTab)) {
+        setActiveTab("overview");
+      }
+      if (sub_role === "IT" && !["overview", "announcements", "audit", "sessions", "maintenance", "messages"].includes(activeTab)) {
+        setActiveTab("overview");
+      }
+    }
+  }, [activeTab, user]);
+
+  // Chat message polling
+  useEffect(() => {
+    if (!token || activeTab !== "messages" || !activeChatUser) return;
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/sa/messages/${activeChatUser}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setSaMessages(await res.json());
+        }
+      } catch (e) {
+        console.error("Error polling messages:", e);
+      }
+    };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab, activeChatUser, token]);
 
   const fetchSchools = async () => {
     const res = await fetch(`${API_BASE}/public/schools`);
@@ -1655,9 +1762,154 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading(true);
+    setErr("");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(staffFormData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Waa ku guuldareystay abuurista shaqaalaha");
+      setMsg(`Si guul leh ayaa loo abuuray shaqaalaha cusub! ID: ${data.staff_id}`);
+      setStaffFormData({
+        name: "",
+        email: "",
+        password: "",
+        sub_role: "Support",
+        shift_start: "",
+        shift_end: "",
+        allowed_ip: ""
+      });
+      fetchSaStaff();
+      fetchSaPerformance();
+    } catch (error: any) {
+      setErr(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (!confirm("Ma hubtaa inaad rabto inaad tirtirto shaqaalahan?")) return;
+    setActionLoading(true);
+    setErr("");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/sa/staff/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Waa ku guuldareystay tirtirista shaqaalaha");
+      setMsg("Shaqaalaha waa la tirtiray si guul leh!");
+      fetchSaStaff();
+      fetchSaPerformance();
+    } catch (error: any) {
+      setErr(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading(true);
+    setErr("");
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/sa/tasks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(taskFormData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Waa ku guuldareystay abuurista hawsha");
+      setMsg("Hawsha si guul leh ayaa loo qoondeeyay!");
+      setTaskFormData({ assigned_to: "", title: "", description: "" });
+      fetchSaTasks();
+    } catch (error: any) {
+      setErr(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateTaskStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "Pending" ? "Completed" : "Pending";
+    try {
+      const res = await fetch(`${API_BASE}/sa/tasks/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (res.ok) {
+        fetchSaTasks();
+        fetchSaPerformance();
+      }
+    } catch (e) {
+      console.error("Error updating task:", e);
+    }
+  };
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !activeChatUser) return;
+    try {
+      const res = await fetch(`${API_BASE}/sa/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          receiver_id: activeChatUser,
+          message: chatInput.trim()
+        })
+      });
+      if (res.ok) {
+        setChatInput("");
+        const newMsg = await res.json();
+        setSaMessages(prev => [...prev, { ...newMsg, sender_name: user.name }]);
+      }
+    } catch (e) {
+      console.error("Error sending message:", e);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const sessionId = localStorage.getItem("sessionId");
+    const storedToken = localStorage.getItem("token");
+    if (sessionId && storedToken) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${storedToken}`
+          },
+          body: JSON.stringify({ sessionId })
+        });
+      } catch (e) {
+        console.error("Error logging out:", e);
+      }
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("sessionId");
     router.push("/login");
   };
 
@@ -1746,6 +1998,108 @@ export default function SuperAdminDashboardPage() {
     );
   }
 
+  const isOwner = !user?.sub_role;
+  const isSupport = user?.sub_role === "Support";
+  const isBilling = user?.sub_role === "Billing";
+  const isIT = user?.sub_role === "IT";
+
+  const navItems = [
+    {
+      id: "overview",
+      label: t.overview,
+      icon: <TrendingUp className="w-4 h-4" />,
+      visible: true
+    },
+    {
+      id: "schools",
+      label: t.schools,
+      icon: <Building2 className="w-4 h-4" />,
+      badge: schools.length,
+      visible: isOwner || isBilling
+    },
+    {
+      id: "pending",
+      label: t.pendingRequests,
+      icon: <Bell className="w-4 h-4" />,
+      badge: pendingRequests.filter(r => r.status === "Pending").length,
+      badgeColor: "amber",
+      visible: isOwner || isSupport
+    },
+    {
+      id: "team",
+      label: lang === "so" ? "Maamulista Shaqaalaha" : "Team Management",
+      icon: <Briefcase className="w-4 h-4" />,
+      visible: isOwner
+    },
+    {
+      id: "admins",
+      label: t.admins,
+      icon: <UserPlus className="w-4 h-4" />,
+      visible: isOwner
+    },
+    {
+      id: "subscriptions",
+      label: t.subscriptions,
+      icon: <DollarSign className="w-4 h-4" />,
+      visible: isOwner || isBilling
+    },
+    {
+      id: "announcements",
+      label: t.announcements,
+      icon: <BookOpen className="w-4 h-4" />,
+      badge: announcements.length,
+      visible: isOwner || isSupport || isIT
+    },
+    {
+      id: "audit",
+      label: t.auditLogs,
+      icon: <Activity className="w-4 h-4" />,
+      visible: isOwner || isIT
+    },
+    {
+      id: "sessions",
+      label: lang === "so" ? "Dhaqdhaqaaqa Users-ka" : t.sessions,
+      icon: <Users className="w-4 h-4" />,
+      visible: isOwner || isIT
+    },
+    {
+      id: "billing",
+      label: t.billing,
+      icon: <DollarSign className="w-4 h-4" />,
+      badge: billingInvoices.length,
+      visible: isOwner || isBilling
+    },
+    {
+      id: "maintenance",
+      label: t.maintenance,
+      icon: <Settings className="w-4 h-4" />,
+      pulse: maintenanceMode,
+      visible: isOwner || isIT
+    },
+    {
+      id: "alerts",
+      label: t.usageAlertsTab,
+      icon: <AlertCircle className="w-4 h-4" />,
+      badge: usageAlerts.filter(a => a.percentage >= 85).length,
+      badgeColor: "danger",
+      visible: isOwner || isBilling
+    },
+    {
+      id: "support",
+      label: t.supportHelp,
+      icon: <Users className="w-4 h-4" />,
+      badge: tickets.filter(tk => tk.status === "Pending").length,
+      badgeColor: "amber",
+      visible: isOwner || isSupport
+    },
+    {
+      id: "messages",
+      label: lang === "so" ? "Farriimaha Team-ka" : "Team Messages",
+      icon: <MessageSquare className="w-4 h-4" />,
+      visible: true
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-background text-textPrimary flex flex-col justify-between">
       {/* Top Bar */}
@@ -1754,7 +2108,12 @@ export default function SuperAdminDashboardPage() {
           <div className="flex items-center gap-3">
             <SmaLogo className="h-9" />
             <div className="h-6 w-px bg-border hidden sm:block" />
-            <span className="text-[10px] text-textSecondary font-bold uppercase tracking-wider hidden sm:inline">{t.portalName}</span>
+            <span className="text-[11px] text-textSecondary font-bold uppercase tracking-wider hidden sm:inline">SMA - School Appoint</span>
+            {user?.sub_role && (
+              <span className="px-2.5 py-0.5 text-[9px] bg-primary/10 text-primary border border-primary/20 rounded-full font-bold uppercase tracking-wide">
+                {user.sub_role === "Support" ? "Adeegga Macaamiisha" : user.sub_role === "Billing" ? "Maaliyadda & Iibka" : "Farsamada & IT"}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -1790,176 +2149,35 @@ export default function SuperAdminDashboardPage() {
       <div className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-8">
         {/* Sidebar Nav */}
         <aside className="w-full md:w-64 shrink-0 space-y-1">
-          <button 
-            onClick={() => { setActiveTab("overview"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "overview" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-4 h-4" /> <span>{t.overview}</span>
-            </div>
-          </button>
-          
-          <button 
-            onClick={() => { setActiveTab("schools"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "schools" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Building2 className="w-4 h-4" /> <span>{t.schools}</span>
-            </div>
-            <span className="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-textSecondary rounded-full font-bold">{schools.length}</span>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("pending"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "pending" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Bell className="w-4 h-4" /> <span>{t.pendingRequests}</span>
-            </div>
-            {pendingRequests.filter(r => r.status === "Pending").length > 0 && (
-              <span className="px-2 py-0.5 text-[10px] bg-amber-500 text-white rounded-full font-bold animate-pulse">{pendingRequests.filter(r => r.status === "Pending").length}</span>
-            )}
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("admins"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "admins" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <UserPlus className="w-4 h-4" /> <span>{t.admins}</span>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("subscriptions"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "subscriptions" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <DollarSign className="w-4 h-4" /> <span>{t.subscriptions}</span>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("announcements"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "announcements" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <BookOpen className="w-4 h-4" /> <span>{t.announcements}</span>
-            </div>
-            <span className="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-textSecondary rounded-full font-bold">{announcements.length}</span>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("audit"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "audit" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Activity className="w-4 h-4" /> <span>{t.auditLogs}</span>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("sessions"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "sessions" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Users className="w-4 h-4" /> <span>{t.sessions}</span>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("billing"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "billing" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <DollarSign className="w-4 h-4" /> <span>{t.billing}</span>
-            </div>
-            <span className="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-textSecondary rounded-full font-bold">{billingInvoices.length}</span>
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("maintenance"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "maintenance" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Settings className="w-4 h-4" /> <span>{t.maintenance}</span>
-            </div>
-            {maintenanceMode && (
-              <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
-            )}
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("alerts"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "alerts" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-4 h-4" /> <span>{t.usageAlertsTab}</span>
-            </div>
-            {usageAlerts.filter(a => a.percentage >= 85).length > 0 && (
-              <span className="px-2 py-0.5 text-[10px] bg-danger text-white rounded-full font-bold">{usageAlerts.filter(a => a.percentage >= 85).length}</span>
-            )}
-          </button>
-
-          <button 
-            onClick={() => { setActiveTab("support"); setMsg(""); setErr(""); }}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeTab === "support" 
-                ? "bg-primary text-white shadow-sm" 
-                : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Users className="w-4 h-4" /> <span>{t.supportHelp}</span>
-            </div>
-            {tickets.filter(tk => tk.status === "Pending").length > 0 && (
-              <span className="px-2 py-0.5 text-[10px] bg-amber-500 text-white rounded-full font-bold">{tickets.filter(tk => tk.status === "Pending").length}</span>
-            )}
-          </button>
+          {navItems.filter(item => item.visible).map(item => (
+            <button 
+              key={item.id}
+              onClick={() => { setActiveTab(item.id as any); setMsg(""); setErr(""); }}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                activeTab === item.id 
+                  ? "bg-primary text-white shadow-sm" 
+                  : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800 text-textSecondary hover:bg-slate-50 dark:hover:bg-slate-850"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {item.icon} <span>{item.label}</span>
+              </div>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold ${
+                  item.badgeColor === "danger" 
+                    ? "bg-danger text-white" 
+                    : item.badgeColor === "amber" 
+                      ? "bg-amber-500 text-white animate-pulse" 
+                      : "bg-slate-100 dark:bg-slate-800 text-textSecondary"
+                }`}>
+                  {item.badge}
+                </span>
+              )}
+              {item.pulse && (
+                <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
+              )}
+            </button>
+          ))}
         </aside>
 
         {/* Workspace Panels */}
@@ -3287,6 +3505,384 @@ export default function SuperAdminDashboardPage() {
                   </form>
                 </div>
               )}
+            </div>
+          )}
+          {/* Tab: team (Maamulista Shaqaalaha) */}
+          {activeTab === "team" && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Performance Cards */}
+              <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                <h3 className="font-extrabold text-sm text-textPrimary uppercase tracking-wider">KPI-yada Shaqada Team-ka (Performance Logs)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+                    <span className="text-[10px] font-bold text-primary uppercase block">Onboarding Approvals</span>
+                    <span className="text-2xl font-extrabold text-textPrimary">
+                      {schools.length} Schools Active
+                    </span>
+                  </div>
+                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase block">Resolved Support Tickets</span>
+                    <span className="text-2xl font-extrabold text-textPrimary">
+                      {tickets.filter(t => t.status === "Resolved").length} Tickets Done
+                    </span>
+                  </div>
+                  <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
+                    <span className="text-[10px] font-bold text-purple-500 uppercase block">Total System Logins</span>
+                    <span className="text-2xl font-extrabold text-textPrimary">
+                      {userSessions.length} Session Logs
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid: Create Staff and Add Task */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Create Staff Form */}
+                <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                  <h3 className="font-extrabold text-sm text-textPrimary">{lang === "so" ? "Diiwaangeli Shaqaale Cusub" : "Register New Staff"}</h3>
+                  <form onSubmit={handleCreateStaff} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">Magaca Dhammaystiran</label>
+                        <input 
+                          type="text" required value={staffFormData.name}
+                          onChange={e => setStaffFormData({...staffFormData, name: e.target.value})}
+                          placeholder="Ahmed Ali" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">Email (Maamulka)</label>
+                        <input 
+                          type="email" required value={staffFormData.email}
+                          onChange={e => setStaffFormData({...staffFormData, email: e.target.value})}
+                          placeholder="ahmed@sma.com" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">Fungaha (Password)</label>
+                        <input 
+                          type="password" required value={staffFormData.password}
+                          onChange={e => setStaffFormData({...staffFormData, password: e.target.value})}
+                          placeholder="••••••••" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">Doorka (Sub-Role)</label>
+                        <select 
+                          value={staffFormData.sub_role}
+                          onChange={e => setStaffFormData({...staffFormData, sub_role: e.target.value})}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                        >
+                          <option value="Support">Adeegga Macaamiisha (Support)</option>
+                          <option value="Billing">Maaliyadda & Rukunada (Billing)</option>
+                          <option value="IT">Farsamada & IT (Tech Support)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">Saacadaha Shift-ga (Start - End)</label>
+                        <div className="flex items-center gap-1.5">
+                          <input 
+                            type="time" value={staffFormData.shift_start}
+                            onChange={e => setStaffFormData({...staffFormData, shift_start: e.target.value})}
+                            className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                          />
+                          <span className="text-textSecondary">-</span>
+                          <input 
+                            type="time" value={staffFormData.shift_end}
+                            onChange={e => setStaffFormData({...staffFormData, shift_end: e.target.value})}
+                            className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-textPrimary">IP-ga loo oggol yahay (Ikhtiyaari)</label>
+                        <input 
+                          type="text" value={staffFormData.allowed_ip}
+                          onChange={e => setStaffFormData({...staffFormData, allowed_ip: e.target.value})}
+                          placeholder="e.g. 192.168.1.100" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2 flex justify-end">
+                      <button 
+                        type="submit" disabled={actionLoading}
+                        className="px-5 py-2 bg-primary text-white font-bold text-xs rounded-lg hover:bg-primary/95 transition-colors disabled:opacity-50"
+                      >
+                        {actionLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Ku dar Shaqaalaha"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Task Assignment Form */}
+                <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                  <h3 className="font-extrabold text-sm text-textPrimary">{lang === "so" ? "U Qoondee Hawl Shaqaalaha" : "Assign Task to Staff"}</h3>
+                  <form onSubmit={handleCreateTask} className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-textPrimary">U qoondee (Assign To)</label>
+                      <select 
+                        required value={taskFormData.assigned_to}
+                        onChange={e => setTaskFormData({...taskFormData, assigned_to: e.target.value})}
+                        className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                      >
+                        <option value="">Dooro shaqaalaha...</option>
+                        {saStaff.map(st => (
+                          <option key={st.id} value={st.id}>{st.name} ({st.staff_id})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-textPrimary">Cinwaanka Hawsha (Task Title)</label>
+                      <input 
+                        type="text" required value={taskFormData.title}
+                        onChange={e => setTaskFormData({...taskFormData, title: e.target.value})}
+                        placeholder="e.g. Fadlan hubi Invoice #203" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-textPrimary">Faahfaahinta Hawsha (Description)</label>
+                      <textarea 
+                        value={taskFormData.description}
+                        onChange={e => setTaskFormData({...taskFormData, description: e.target.value})}
+                        placeholder="Qor faahfaahinta halkan..." rows={2}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800 resize-none"
+                      />
+                    </div>
+                    <div className="pt-1 flex justify-end">
+                      <button 
+                        type="submit" disabled={actionLoading}
+                        className="px-5 py-2 bg-accent text-white font-bold text-xs rounded-lg hover:bg-accent/95 transition-colors disabled:opacity-50"
+                      >
+                        {actionLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Gudbi Hawsha"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Staff Table */}
+              <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                <h3 className="font-extrabold text-sm text-textPrimary">Liiska Shaqaalaha Platform-ka (Staff Members)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-border dark:border-slate-800 text-[10px] text-textSecondary uppercase tracking-wider font-bold">
+                        <th className="pb-3">ID</th>
+                        <th className="pb-3">Magaca</th>
+                        <th className="pb-3">Email</th>
+                        <th className="pb-3">Role</th>
+                        <th className="pb-3">Shift Hours</th>
+                        <th className="pb-3">Allowed IP</th>
+                        <th className="pb-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border dark:divide-slate-800 text-xs">
+                      {saStaff.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-textSecondary font-medium">Ma jiraan shaqaale la diiwaangeliyey.</td>
+                        </tr>
+                      ) : (
+                        saStaff.map(st => (
+                          <tr key={st.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                            <td className="py-3.5 font-mono font-bold text-primary">{st.staff_id}</td>
+                            <td className="py-3.5 font-bold text-textPrimary">{st.name}</td>
+                            <td className="py-3.5 text-textSecondary">{st.email}</td>
+                            <td className="py-3.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                st.sub_role === "Support" 
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                  : st.sub_role === "Billing"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                              }`}>
+                                {st.sub_role}
+                              </span>
+                            </td>
+                            <td className="py-3.5 font-bold text-textSecondary">
+                              {st.shift_start && st.shift_end ? `${st.shift_start} - ${st.shift_end}` : "24/7 (Open)"}
+                            </td>
+                            <td className="py-3.5 text-textSecondary font-mono">{st.allowed_ip || "Any IP"}</td>
+                            <td className="py-3.5 text-right">
+                              <button 
+                                onClick={() => handleDeleteStaff(st.id)}
+                                className="p-1 text-danger hover:bg-danger/10 rounded transition-colors"
+                                title="Delete staff member"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tasks List */}
+              <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+                <h3 className="font-extrabold text-sm text-textPrimary">Diiwaanka Hawlaha la Qaybiyey (Assigned Tasks Ledger)</h3>
+                <div className="space-y-3">
+                  {saTasks.length === 0 ? (
+                    <div className="p-6 text-center text-textSecondary border border-dashed border-border rounded-xl font-medium dark:border-slate-800">
+                      Ma jiraan wax hawlo ah oo hadda jira.
+                    </div>
+                  ) : (
+                    saTasks.map(t => {
+                      const isCompleted = t.status === "Completed";
+                      return (
+                        <div key={t.id} className="p-4 border border-border rounded-xl bg-slate-50 dark:bg-slate-950/40 flex justify-between items-center gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                isCompleted ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                              }`}>
+                                {t.status}
+                              </span>
+                              <h4 className={`font-extrabold text-xs text-textPrimary ${isCompleted ? "line-through opacity-50" : ""}`}>{t.title}</h4>
+                            </div>
+                            <p className="text-[10px] text-textSecondary leading-relaxed">{t.description}</p>
+                            <p className="text-[9px] text-textSecondary font-bold">
+                              Assigned to: <span className="text-primary">{t.assignee_name || "Staff"} ({t.assignee_staff_id})</span> • {new Date(t.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateTaskStatus(t.id, t.status)}
+                            className={`p-1.5 rounded-lg border transition-all ${
+                              isCompleted 
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20"
+                                : "bg-white border-border text-textSecondary hover:bg-slate-100 dark:bg-slate-900"
+                            }`}
+                            title={isCompleted ? "Mark Pending" : "Mark Completed"}
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: messages (Wada-hadalka Shaqaalaha & Super Admin) */}
+          {activeTab === "messages" && (
+            <div className="bg-white border border-border rounded-card shadow-soft p-6 flex flex-col md:flex-row gap-6 min-h-[500px] animate-fadeIn dark:bg-slate-900 dark:border-slate-800">
+              {/* Left Column: Channels / User List */}
+              <div className="w-full md:w-64 shrink-0 border-r border-border dark:border-slate-800 pr-0 md:pr-4 flex flex-col gap-3">
+                <h3 className="font-extrabold text-sm text-textPrimary">{lang === "so" ? "Wada-hadalka Team-ka" : "Team Members"}</h3>
+                <div className="space-y-1 overflow-y-auto max-h-[400px]">
+                  {/* Option to chat with Owner (Only visible to Staff!) */}
+                  {!isOwner && (
+                    <button 
+                      onClick={() => {
+                        setActiveChatUser("owner"); // special ID for owner
+                        setSaMessages([]);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                        activeChatUser === "owner" 
+                          ? "bg-primary/10 text-primary border border-primary/20" 
+                          : "hover:bg-slate-50 dark:hover:bg-slate-850/40 text-textSecondary"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold">
+                        👑
+                      </div>
+                      <div>
+                        <span className="block text-textPrimary">Platform Owner</span>
+                        <span className="text-[9px] text-textSecondary uppercase">Mulkiilaha (Owner)</span>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* List of staff members to chat with (Owner sees everyone, staff can see peers too!) */}
+                  {saStaff.map(st => {
+                    const isSelected = activeChatUser === st.id;
+                    return (
+                      <button 
+                        key={st.id}
+                        onClick={() => {
+                          setActiveChatUser(st.id);
+                          setSaMessages([]);
+                        }}
+                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                          isSelected 
+                            ? "bg-primary/10 text-primary border border-primary/20" 
+                            : "hover:bg-slate-50 dark:hover:bg-slate-850/40 text-textSecondary"
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 text-textPrimary flex items-center justify-center font-bold">
+                          {st.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="block text-textPrimary">{st.name}</span>
+                          <span className="text-[9px] text-textSecondary uppercase font-bold">{st.staff_id} • {st.sub_role}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Chat Box */}
+              <div className="flex-grow flex flex-col justify-between min-h-[450px]">
+                {activeChatUser ? (
+                  <>
+                    {/* Chat Messages Log */}
+                    <div className="flex-grow space-y-4 overflow-y-auto max-h-[380px] p-4 bg-slate-50 dark:bg-slate-950/40 border border-border dark:border-slate-800 rounded-xl mb-4">
+                      {saMessages.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-textSecondary text-xs">
+                          Ma jiraan wax farriimo ah oo hadda jira. Qor fariintaada koowaad hoos!
+                        </div>
+                      ) : (
+                        saMessages.map(m => {
+                          const isMe = m.sender_id === user.id;
+                          return (
+                            <div key={m.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                              <div className={`max-w-[70%] p-3.5 rounded-2xl text-xs leading-relaxed space-y-1 shadow-soft ${
+                                isMe 
+                                  ? "bg-primary text-white rounded-tr-none" 
+                                  : "bg-white dark:bg-slate-900 border border-border text-textPrimary rounded-tl-none"
+                              }`}>
+                                <span className="text-[9px] font-bold opacity-70 block">{isMe ? "You" : m.sender_name}</span>
+                                <p>{m.message}</p>
+                                <span className="text-[8px] opacity-50 block text-right">{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat Input form */}
+                    <form onSubmit={handleSendChatMessage} className="flex gap-2">
+                      <input 
+                        type="text" required value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        placeholder="Halkan ku qor farriintaada..."
+                        className="flex-grow px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+                      />
+                      <button 
+                        type="submit"
+                        className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary/95 transition-colors shadow-sm"
+                      >
+                        Send
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-textSecondary space-y-3">
+                    <MessageSquare className="w-12 h-12 text-textSecondary/30" />
+                    <span className="text-xs font-bold">Fadlan ka dooro shaqaalaha dhinaca bidix si aad u bilowdo sheekaysiga.</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>

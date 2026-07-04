@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { login, registerAdmin, getMe, getAuditLogs, heartbeat, getSessions, getSystemUsers } from '../controllers/authController';
+import { login, logout, registerAdmin, getMe, getAuditLogs, heartbeat, getSessions, getSystemUsers } from '../controllers/authController';
 import { getSchools, getSchoolById, createSchool, updateSchool, deleteSchool } from '../controllers/schoolController';
 import { createAppointment, getAppointments, updateAppointmentStatus, exportAppointmentsCSV, getWaitingList, getAppointmentByNumber } from '../controllers/appointmentController';
 import { getSubscriptionPlans, getSchoolSubscription, upgradeSubscription, updateSubscriptionPlan } from '../controllers/subscriptionController';
 import { createRequest, getRequests, approveRequest, rejectRequest } from '../controllers/onboardingController';
 import { createAnnouncement, getAnnouncements, deleteAnnouncement } from '../controllers/announcementController';
 import { createStaff, getStaff, deleteStaff, getMessages, postMessage, updateAppointmentNote } from '../controllers/staffController';
+import { getStaffList, createStaff as createSaStaff, updateStaff as updateSaStaff, deleteStaff as deleteSaStaff, getTasks as getSaTasks, createTask, updateTaskStatus, getMessages as getSaMessages, sendMessage, getStaffPerformance } from '../controllers/saStaffController';
 import { getMaintenanceMode, setMaintenanceMode, getBillingHistory, getUsageAlerts, sendUpgradeAlert, getSupportTickets, createSupportTicket, replySupportTicket } from '../controllers/systemController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -27,6 +28,7 @@ router.get('/public/system/maintenance', getMaintenanceMode);
 router.use(authenticateToken); // Protect all routes below
 
 router.get('/auth/me', getMe);
+router.post('/auth/logout', logout);
 router.post('/auth/heartbeat', heartbeat);
 router.get('/appointments', getAppointments);
 router.get('/appointments/number/:apptNum', getAppointmentByNumber);
@@ -85,5 +87,23 @@ router.get('/audit-logs', requireRole(['SuperAdmin']), getAuditLogs);
 // System user tracking & sessions (SuperAdmin only)
 router.get('/system/sessions', requireRole(['SuperAdmin']), getSessions);
 router.get('/system/users', requireRole(['SuperAdmin']), getSystemUsers);
+
+// Super Admin Platform Staff Management
+router.get('/sa/staff', requireRole(['SuperAdmin']), getStaffList);
+router.post('/sa/staff', requireRole(['SuperAdmin']), createSaStaff);
+router.put('/sa/staff/:id', requireRole(['SuperAdmin']), updateSaStaff);
+router.delete('/sa/staff/:id', requireRole(['SuperAdmin']), deleteSaStaff);
+
+// Staff Tasks & To-Dos
+router.get('/sa/tasks', requireRole(['SuperAdmin']), getSaTasks);
+router.post('/sa/tasks', requireRole(['SuperAdmin']), createTask);
+router.put('/sa/tasks/:id/status', requireRole(['SuperAdmin']), updateTaskStatus);
+
+// Staff Direct Messages / Chats
+router.get('/sa/messages/:otherUserId', requireRole(['SuperAdmin']), getSaMessages);
+router.post('/sa/messages', requireRole(['SuperAdmin']), sendMessage);
+
+// Staff Performance Metrics
+router.get('/sa/performance', requireRole(['SuperAdmin']), getStaffPerformance);
 
 export default router;
