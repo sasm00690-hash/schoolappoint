@@ -770,13 +770,13 @@ export default function SuperAdminDashboardPage() {
     if (!user) return;
     const sub_role = user.sub_role;
     if (sub_role) {
-      if (sub_role === "Support" && !["overview", "pending", "announcements", "support", "messages"].includes(activeTab)) {
+      if (sub_role === "Support" && !["overview", "profile", "pending", "announcements", "support", "messages"].includes(activeTab)) {
         setActiveTab("overview");
       }
-      if (sub_role === "Billing" && !["overview", "schools", "subscriptions", "billing", "alerts", "messages"].includes(activeTab)) {
+      if (sub_role === "Billing" && !["overview", "profile", "schools", "subscriptions", "billing", "alerts", "messages"].includes(activeTab)) {
         setActiveTab("overview");
       }
-      if (sub_role === "IT" && !["overview", "announcements", "audit", "sessions", "maintenance", "messages"].includes(activeTab)) {
+      if (sub_role === "IT" && !["overview", "profile", "announcements", "audit", "sessions", "maintenance", "messages"].includes(activeTab)) {
         setActiveTab("overview");
       }
     }
