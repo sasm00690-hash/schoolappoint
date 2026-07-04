@@ -2206,6 +2206,14 @@ export default function SuperAdminDashboardPage() {
     }
   ];
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-textPrimary flex flex-col justify-between">
       {/* Top Bar */}
