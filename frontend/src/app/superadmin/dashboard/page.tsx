@@ -2413,7 +2413,7 @@ export default function SuperAdminDashboardPage() {
                   </div>
 
                   {/* SMA Custom Branded Verification QR Code */}
-                  {user.serial_number && (
+                  {(user.serial_number || isOwner) && (
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-col items-center space-y-2">
                       <span className="text-[9px] font-black text-textSecondary uppercase tracking-widest">SMA Secure Verification</span>
                       
@@ -2427,7 +2427,7 @@ export default function SuperAdminDashboardPage() {
                       }`}>
                         <div className="relative w-28 h-28 bg-white p-1.5 rounded-xl flex items-center justify-center">
                           <img 
-                            src={`https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl=${encodeURIComponent(typeof window !== "undefined" ? `${window.location.origin}/verify/staff/${user.serial_number}` : "")}&choe=UTF-8`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://schoolappoint.com/verify/staff/${user.serial_number || "SMA-OWNER-001"}`)}`}
                             alt="QR Verification"
                             className="w-full h-full object-contain"
                           />
@@ -2439,7 +2439,7 @@ export default function SuperAdminDashboardPage() {
                       </div>
                       
                       <span className="font-mono text-[9px] text-textSecondary font-bold select-all tracking-wider">
-                        {user.serial_number}
+                        {user.serial_number || "SMA-OWNER-001"}
                       </span>
                     </div>
                   )}
@@ -4745,7 +4745,7 @@ export default function SuperAdminDashboardPage() {
                 <span className="text-[9px] font-black text-textSecondary uppercase tracking-widest">Secure QR Verification</span>
 
                 {/* Holographic Glowing Frame */}
-                {selectedStaffDetail.serial_number ? (
+                {(selectedStaffDetail.serial_number || selectedStaffDetail.staff_id) ? (
                   <>
                     <div className={`p-2 rounded-2xl relative shadow-inner ${
                       selectedStaffDetail.is_department_head 
@@ -4754,7 +4754,7 @@ export default function SuperAdminDashboardPage() {
                     }`}>
                       <div className="relative w-24 h-24 bg-white p-1 rounded-xl flex items-center justify-center">
                         <img 
-                          src={`https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=${encodeURIComponent(typeof window !== "undefined" ? `${window.location.origin}/verify/staff/${selectedStaffDetail.serial_number}` : "")}&choe=UTF-8`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://schoolappoint.com/verify/staff/${selectedStaffDetail.serial_number || selectedStaffDetail.staff_id}`)}`}
                           alt="QR Verification"
                           className="w-full h-full object-contain"
                         />
@@ -4765,7 +4765,7 @@ export default function SuperAdminDashboardPage() {
                       </div>
                     </div>
                     <span className="font-mono text-[9px] text-textSecondary font-bold select-all tracking-wider">
-                      {selectedStaffDetail.serial_number}
+                      {selectedStaffDetail.serial_number || selectedStaffDetail.staff_id}
                     </span>
                   </>
                 ) : (
