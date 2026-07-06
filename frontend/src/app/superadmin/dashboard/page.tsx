@@ -33,7 +33,9 @@ import {
   ListTodo,
   CheckSquare,
   Briefcase,
-  User
+  User,
+  Crown,
+  Shield
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -482,7 +484,8 @@ export default function SuperAdminDashboardPage() {
     shift_start: "",
     shift_end: "",
     allowed_ip: "",
-    avatar_url: ""
+    avatar_url: "",
+    is_department_head: false
   });
 
   const [taskFormData, setTaskFormData] = useState({
@@ -1816,7 +1819,8 @@ export default function SuperAdminDashboardPage() {
         shift_start: "",
         shift_end: "",
         allowed_ip: "",
-        avatar_url: ""
+        avatar_url: "",
+        is_department_head: false
       });
       fetchSaStaff();
       fetchSaPerformance();
@@ -2332,40 +2336,113 @@ export default function SuperAdminDashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Column 1: Info Card */}
-                <div className="bg-white border border-border rounded-card shadow-soft p-6 space-y-6 dark:bg-slate-900 dark:border-slate-800">
-                  <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-border dark:border-slate-800">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-indigo-600 text-white flex items-center justify-center text-3xl font-bold shadow-soft">
-                      {user.name.charAt(0).toUpperCase()}
+                {/* Column 1: Info Card / Digital ID Badge */}
+                <div className={`rounded-card p-6 space-y-6 relative overflow-hidden border-2 ${
+                  isOwner 
+                    ? "bg-slate-900 border-purple-500/50 shadow-[0_0_25px_rgba(139,92,246,0.15)] text-white" 
+                    : user.is_department_head 
+                      ? "bg-slate-900 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.15)] text-white"
+                      : "bg-white border-border dark:bg-slate-900 dark:border-slate-800 text-textPrimary"
+                }`}>
+                  {/* Rank Header Seal */}
+                  <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      isOwner 
+                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" 
+                        : user.is_department_head 
+                          ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                    }`}>
+                      {isOwner ? <Crown className="w-5 h-5" /> : user.is_department_head ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-base text-textPrimary">{user.name}</h3>
-                      <span className="px-2.5 py-0.5 text-[9px] bg-primary/10 text-primary border border-primary/20 rounded-full font-bold uppercase tracking-wider mt-1 inline-block">
-                        {user.sub_role ? user.sub_role : "Super Admin (Owner)"}
+                      <h4 className="font-extrabold text-[9px] text-textSecondary uppercase tracking-widest">OFFICIAL ID PASS</h4>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        isOwner 
+                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
+                          : user.is_department_head 
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : "bg-slate-100 dark:bg-slate-800 text-textSecondary"
+                      }`}>
+                        {isOwner ? "Maamulaha Guud" : user.is_department_head ? "Gudoomiye" : "Maamulka / Agent"}
                       </span>
                     </div>
                   </div>
 
-                  <div className="space-y-4 text-xs">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">ID-ga Nidaamka (Staff ID)</span>
-                      <span className="font-mono text-textPrimary font-bold">{user.staff_id || "OWNER-001"}</span>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">Email-ka Rasmiga ah</span>
-                      <span className="text-textPrimary font-semibold">{user.email}</span>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">Xilliga Shift-ga (Shift Hours)</span>
-                      <span className="text-textPrimary font-semibold">
-                        {user.shift_start && user.shift_end ? `${user.shift_start} - ${user.shift_end}` : "24/7 (Any time)"}
-                      </span>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">IP Address-ka Loo Oggol yahay</span>
-                      <span className="font-mono text-textPrimary font-semibold">{user.allowed_ip || "Any IP (No Lock)"}</span>
+                  {/* Profile Photo / Avatar */}
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    {user.avatar_url ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt={user.name} 
+                        className={`w-20 h-20 rounded-2xl object-contain bg-slate-950 p-1 border ${
+                          isOwner ? "border-purple-500/30" : user.is_department_head ? "border-amber-500/30" : "border-slate-200 dark:border-slate-800"
+                        }`}
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary to-indigo-600 text-white flex items-center justify-center text-3xl font-bold shadow-soft">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-extrabold text-base">{user.name}</h3>
+                      <p className="text-[10px] text-textSecondary font-mono">{user.email}</p>
                     </div>
                   </div>
+
+                  {/* Details */}
+                  <div className="space-y-3.5 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/85">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-textSecondary uppercase tracking-wider">ID-ga Nidaamka</span>
+                      <span className="font-mono font-bold text-right">{user.staff_id || "OWNER-001"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-textSecondary uppercase tracking-wider">Tixraaca (Serial)</span>
+                      <span className="font-mono font-bold text-right">{user.serial_number || (isOwner ? "SMA-OWNER-001" : "N/A")}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-textSecondary uppercase tracking-wider">Shift-ga Shaqada</span>
+                      <span className="font-semibold text-right">
+                        {user.shift_start && user.shift_end ? `${user.shift_start} - ${user.shift_end}` : "24/7 (Open)"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-textSecondary uppercase tracking-wider">Allowed IP</span>
+                      <span className="font-mono font-semibold text-right">{user.allowed_ip || "Any IP"}</span>
+                    </div>
+                  </div>
+
+                  {/* SMA Custom Branded Verification QR Code */}
+                  {user.serial_number && (
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-col items-center space-y-2">
+                      <span className="text-[9px] font-black text-textSecondary uppercase tracking-widest">SMA Secure Verification</span>
+                      
+                      {/* Holographic Glowing Frame */}
+                      <div className={`p-2 rounded-2xl relative shadow-inner ${
+                        isOwner 
+                          ? "bg-purple-950/20 border border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.15)]" 
+                          : user.is_department_head 
+                            ? "bg-amber-950/20 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                            : "bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-850"
+                      }`}>
+                        <div className="relative w-28 h-28 bg-white p-1.5 rounded-xl flex items-center justify-center">
+                          <img 
+                            src={`https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl=${encodeURIComponent(typeof window !== "undefined" ? `${window.location.origin}/verify/staff/${user.serial_number}` : "")}&choe=UTF-8`}
+                            alt="QR Verification"
+                            className="w-full h-full object-contain"
+                          />
+                          {/* Centered SMA Logo overlay */}
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-slate-950 border-2 border-white rounded-full flex items-center justify-center text-[7px] font-black text-primary select-none">
+                            SMA
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <span className="font-mono text-[9px] text-textSecondary font-bold select-all tracking-wider">
+                        {user.serial_number}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Column 2 & 3: Sessions & Tasks */}
@@ -3974,6 +4051,18 @@ export default function SuperAdminDashboardPage() {
                           <option value="Billing">Maaliyadda & Rukunada (Billing)</option>
                           <option value="IT">Farsamada & IT (Tech Support)</option>
                         </select>
+                        <div className="flex items-center gap-2 pt-1.5">
+                          <input 
+                            type="checkbox"
+                            id="is_department_head"
+                            checked={staffFormData.is_department_head || false}
+                            onChange={e => setStaffFormData({...staffFormData, is_department_head: e.target.checked})}
+                            className="rounded border-border text-primary focus:ring-primary dark:bg-slate-950 dark:border-slate-800 w-3.5 h-3.5"
+                          />
+                          <label htmlFor="is_department_head" className="text-[10px] font-bold text-textSecondary cursor-pointer">
+                            Ka dhig Gudoomiye (Make Department Head)
+                          </label>
+                        </div>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -4116,7 +4205,17 @@ export default function SuperAdminDashboardPage() {
                                 </div>
                               )}
                             </td>
-                            <td className="py-3.5 font-bold text-textPrimary">{st.name}</td>
+                            <td className="py-3.5 font-bold text-textPrimary">
+                              <div className="flex items-center gap-1.5">
+                                <span>{st.name}</span>
+                                {st.is_department_head && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[8px] font-black uppercase flex items-center gap-0.5" title="Department Head">
+                                    <Shield className="w-2.5 h-2.5" />
+                                    Gudoomiye
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td className="py-3.5 text-textSecondary">{st.email}</td>
                             <td className="py-3.5">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
@@ -4554,38 +4653,127 @@ export default function SuperAdminDashboardPage() {
       {selectedStaffDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 border border-border dark:border-slate-850 rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto animate-scaleIn">
-            {/* Header info */}
-            <div className="flex justify-between items-start border-b border-border dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-4">
-                {selectedStaffDetail.avatar_url ? (
-                  <img src={selectedStaffDetail.avatar_url} alt={selectedStaffDetail.name} className="w-16 h-16 rounded-full object-contain bg-slate-50 border border-border p-1 dark:bg-slate-950 dark:border-slate-850" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-extrabold text-xl">
-                    {selectedStaffDetail.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="text-left">
-                  <h3 className="font-extrabold text-base text-textPrimary">{selectedStaffDetail.name}</h3>
-                  <p className="text-[10px] text-textSecondary font-bold uppercase tracking-wider">
-                    Staff ID: <span className="text-primary font-mono">{selectedStaffDetail.staff_id}</span> • {selectedStaffDetail.email}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary text-white">
-                      {selectedStaffDetail.sub_role}
-                    </span>
-                    <span className="text-xs text-textSecondary font-bold">
-                      Shift: {selectedStaffDetail.shift_start && selectedStaffDetail.shift_end ? `${selectedStaffDetail.shift_start} - ${selectedStaffDetail.shift_end}` : "24/7 (Open)"}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            {/* Header info / Digital Badge View */}
+            <div className="flex justify-between items-start border-b border-border dark:border-slate-800 pb-3 bg-slate-50 dark:bg-slate-950 p-4 -mx-6 -mt-6 rounded-t-2xl">
+              <h3 className="font-extrabold text-sm text-textPrimary flex items-center gap-1.5">
+                <User className="w-4 h-4 text-primary" />
+                {lang === "so" ? "Kaarta Aqoonsiga Shaqaalaha (Digital ID Card)" : "Staff Official ID Badge"}
+              </h3>
               <button 
                 onClick={() => setSelectedStaffDetail(null)}
-                className="text-textSecondary hover:text-textPrimary p-1 bg-slate-50 dark:bg-slate-950 rounded-lg border border-border dark:border-slate-800 transition-colors"
+                className="text-textSecondary hover:text-textPrimary p-1 bg-white dark:bg-slate-900 rounded-lg border border-border dark:border-slate-800 transition-colors"
               >
                 ✕
               </button>
             </div>
+
+            {/* Twin columns layout for Badge & QR */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 text-left">
+              {/* Badge Details Column */}
+              <div className={`md:col-span-3 rounded-2xl p-5 border-2 relative overflow-hidden flex flex-col justify-between space-y-4 ${
+                selectedStaffDetail.is_department_head 
+                  ? "bg-slate-900 border-amber-500/50 text-white shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                  : "bg-slate-50 border-border dark:bg-slate-950 dark:border-slate-850 text-textPrimary dark:text-white"
+              }`}>
+                {/* Header rank label */}
+                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200 dark:border-slate-800/80">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    selectedStaffDetail.is_department_head 
+                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                      : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                  }`}>
+                    {selectedStaffDetail.is_department_head ? <Shield className="w-4.5 h-4.5" /> : <User className="w-4.5 h-4.5" />}
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-[9px] text-textSecondary uppercase tracking-wider">OFFICIAL ID PASS</h5>
+                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                      selectedStaffDetail.is_department_head 
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        : "bg-slate-200 dark:bg-slate-800 text-textSecondary"
+                    }`}>
+                      {selectedStaffDetail.is_department_head ? "Gudoomiyaha Qeybta" : "Maamulka / Agent"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Avatar and Name */}
+                <div className="flex items-center gap-3">
+                  {selectedStaffDetail.avatar_url ? (
+                    <img 
+                      src={selectedStaffDetail.avatar_url} 
+                      alt={selectedStaffDetail.name} 
+                      className={`w-14 h-14 rounded-xl object-contain bg-slate-950 p-1 border ${
+                        selectedStaffDetail.is_department_head ? "border-amber-500/30" : "border-slate-200 dark:border-slate-800"
+                      }`}
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-extrabold text-lg">
+                      {selectedStaffDetail.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    <h4 className="font-black text-sm">{selectedStaffDetail.name}</h4>
+                    <p className="text-[10px] text-textSecondary font-mono">{selectedStaffDetail.email}</p>
+                  </div>
+                </div>
+
+                {/* Technical data table */}
+                <div className="space-y-2 text-[11px] pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                  <div className="flex justify-between">
+                    <span className="text-[9px] font-bold text-textSecondary uppercase">ID-ga Nidaamka</span>
+                    <span className="font-mono font-bold">{selectedStaffDetail.staff_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] font-bold text-textSecondary uppercase">Tixraaca (Serial)</span>
+                    <span className="font-mono font-bold">{selectedStaffDetail.serial_number || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] font-bold text-textSecondary uppercase">Doorka / Qeybta</span>
+                    <span className="font-semibold">{selectedStaffDetail.sub_role}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] font-bold text-textSecondary uppercase">Shift-ga</span>
+                    <span className="font-semibold">
+                      {selectedStaffDetail.shift_start && selectedStaffDetail.shift_end ? `${selectedStaffDetail.shift_start} - ${selectedStaffDetail.shift_end}` : "24/7 (Open)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Verification Column */}
+              <div className="md:col-span-2 flex flex-col items-center justify-center space-y-3 p-4 border border-border dark:border-slate-850 rounded-2xl bg-slate-50 dark:bg-slate-950/40 text-center">
+                <span className="text-[9px] font-black text-textSecondary uppercase tracking-widest">Secure QR Verification</span>
+
+                {/* Holographic Glowing Frame */}
+                {selectedStaffDetail.serial_number ? (
+                  <>
+                    <div className={`p-2 rounded-2xl relative shadow-inner ${
+                      selectedStaffDetail.is_department_head 
+                        ? "bg-amber-950/20 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]" 
+                        : "bg-white border border-border dark:bg-slate-900 dark:border-slate-800"
+                    }`}>
+                      <div className="relative w-24 h-24 bg-white p-1 rounded-xl flex items-center justify-center">
+                        <img 
+                          src={`https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=${encodeURIComponent(typeof window !== "undefined" ? `${window.location.origin}/verify/staff/${selectedStaffDetail.serial_number}` : "")}&choe=UTF-8`}
+                          alt="QR Verification"
+                          className="w-full h-full object-contain"
+                        />
+                        {/* Centered SMA Logo overlay */}
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5.5 h-5.5 bg-slate-950 border border-white rounded-full flex items-center justify-center text-[6px] font-black text-primary select-none">
+                          SMA
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[9px] text-textSecondary font-bold select-all tracking-wider">
+                      {selectedStaffDetail.serial_number}
+                    </span>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-textSecondary italic">No serial number assigned</p>
+                )}
+              </div>
+            </div>
+
 
             {/* Performance KPIs for this staff member */}
             <div className="space-y-2 text-left">

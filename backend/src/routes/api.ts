@@ -6,7 +6,7 @@ import { getSubscriptionPlans, getSchoolSubscription, upgradeSubscription, updat
 import { createRequest, getRequests, approveRequest, rejectRequest } from '../controllers/onboardingController';
 import { createAnnouncement, getAnnouncements, deleteAnnouncement } from '../controllers/announcementController';
 import { createStaff, getStaff, deleteStaff, getMessages, postMessage, updateAppointmentNote } from '../controllers/staffController';
-import { getStaffList, createStaff as createSaStaff, updateStaff as updateSaStaff, deleteStaff as deleteSaStaff, getTasks as getSaTasks, createTask, updateTaskStatus, getMessages as getSaMessages, sendMessage, getStaffPerformance, applyStaff, getStaffApplications, rejectStaffApplication, hireStaffApplication } from '../controllers/saStaffController';
+import { getStaffList, createStaff as createSaStaff, updateStaff as updateSaStaff, deleteStaff as deleteSaStaff, getTasks as getSaTasks, createTask, updateTaskStatus, getMessages as getSaMessages, sendMessage, getStaffPerformance, applyStaff, getStaffApplications, rejectStaffApplication, hireStaffApplication, verifyStaff } from '../controllers/saStaffController';
 import { getMaintenanceMode, setMaintenanceMode, getBillingHistory, getUsageAlerts, sendUpgradeAlert, getSupportTickets, createSupportTicket, replySupportTicket } from '../controllers/systemController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -22,6 +22,7 @@ router.post('/public/appointments', createAppointment);
 router.post('/public/onboarding-requests', createRequest); // Public registration request
 router.get('/public/system/maintenance', getMaintenanceMode);
 router.post('/public/staff-apply', applyStaff);
+router.get('/public/verify-staff/:id', verifyStaff);
 
 // ==========================================
 // 2. AUTHENTICATED ENDPOINTS (Admins & SuperAdmins)

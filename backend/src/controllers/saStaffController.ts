@@ -12,7 +12,7 @@ export const getStaffList = async (req: AuthenticatedRequest, res: Response) => 
 
   try {
     const result = await query(
-      `SELECT id, name, email, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url, created_at
+      `SELECT id, name, email, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url, is_department_head, serial_number, created_at
        FROM school_admins
        WHERE role = 'SuperAdmin' AND id != $1
        ORDER BY created_at DESC`,
@@ -31,7 +31,7 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(403).json({ error: 'Fasax uma lihid inaad maamusho shaqaalaha' });
   }
 
-  const { name, email, password, sub_role, shift_start, shift_end, allowed_ip, avatar_url } = req.body;
+  const { name, email, password, sub_role, shift_start, shift_end, allowed_ip, avatar_url, is_department_head } = req.body;
 
   if (!name || !email || !password || !sub_role) {
     return res.status(400).json({ error: 'Name, email, password, and sub-role are required' });
@@ -63,11 +63,17 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
     // Hash password
     const hash = await bcrypt.hash(password, 12);
 
+    // Generate unique serial number
+    const typeStr = is_department_head ? 'HEAD' : 'AGENT';
+    const deptAbbrev = sub_role.slice(0, 3).toUpperCase();
+    const seqNum = nextId.replace('SMA-', '');
+    const serialNum = `SMA-${typeStr}-${deptAbbrev}-${seqNum}`;
+
     // Insert staff
     const result = await query(
-      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url)
-       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5, $6, $7, $8, $9)
-       RETURNING id, name, email, role, sub_role, staff_id, avatar_url`,
+      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id, shift_start, shift_end, allowed_ip, avatar_url, is_department_head, serial_number)
+       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id, name, email, role, sub_role, staff_id, avatar_url, is_department_head, serial_number`,
       [
         name, 
         email.toLowerCase().trim(), 
@@ -77,14 +83,16 @@ export const createStaff = async (req: AuthenticatedRequest, res: Response) => {
         shift_start || null, 
         shift_end || null, 
         allowed_ip || null,
-        avatar_url || null
+        avatar_url || null,
+        !!is_department_head,
+        serialNum
       ]
     );
 
     await logAudit(
       req.user.id, 
       'Created Staff Member', 
-      `Created staff account "${name}" (${nextId}) with role: ${sub_role}`
+      `Created staff account "${name}" (${nextId}) with role: ${sub_role} (Serial: ${serialNum})`
     );
 
     res.status(201).json(result.rows[0]);
@@ -101,14 +109,25 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const { id } = req.params;
-  const { name, email, sub_role, shift_start, shift_end, allowed_ip, avatar_url } = req.body;
+  const { name, email, sub_role, shift_start, shift_end, allowed_ip, avatar_url, is_department_head } = req.body;
 
   try {
+    // Fetch current staff_id first
+    const staffCheck = await query('SELECT staff_id FROM school_admins WHERE id = $1', [id]);
+    if (staffCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    const staff_id = staffCheck.rows[0].staff_id;
+    const seqNum = staff_id.replace('SMA-', '');
+    const typeStr = is_department_head ? 'HEAD' : 'AGENT';
+    const deptAbbrev = sub_role.slice(0, 3).toUpperCase();
+    const serialNum = `SMA-${typeStr}-${deptAbbrev}-${seqNum}`;
+
     const result = await query(
       `UPDATE school_admins
-       SET name = $1, email = $2, sub_role = $3, shift_start = $4, shift_end = $5, allowed_ip = $6, avatar_url = $7
-       WHERE id = $8 AND role = 'SuperAdmin'
-       RETURNING id, name, email, sub_role, staff_id, avatar_url`,
+       SET name = $1, email = $2, sub_role = $3, shift_start = $4, shift_end = $5, allowed_ip = $6, avatar_url = $7, is_department_head = $8, serial_number = $9
+       WHERE id = $10 AND role = 'SuperAdmin'
+       RETURNING id, name, email, sub_role, staff_id, avatar_url, is_department_head, serial_number`,
       [
         name, 
         email.toLowerCase().trim(), 
@@ -117,6 +136,8 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response) => {
         shift_end || null, 
         allowed_ip || null, 
         avatar_url || null,
+        !!is_department_head,
+        serialNum,
         id
       ]
     );
@@ -128,7 +149,7 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response) => {
     await logAudit(
       req.user.id, 
       'Updated Staff Member', 
-      `Updated settings for staff "${name}" (${result.rows[0].staff_id})`
+      `Updated staff account "${name}" (${staff_id})`
     );
 
     res.json(result.rows[0]);
@@ -503,11 +524,12 @@ export const hireStaffApplication = async (req: AuthenticatedRequest, res: Respo
     const hash = await bcrypt.hash(tempPassword, 12);
 
     // 5. Insert new staff admin record
+    const serialNum = `SMA-AGENT-${app.sub_role.slice(0, 3).toUpperCase()}-${nextId.replace('SMA-', '')}`;
     const staffResult = await query(
-      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id)
-       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5)
-       RETURNING id, name, email, role, sub_role, staff_id`,
-      [app.name, app.email, hash, app.sub_role, nextId]
+      `INSERT INTO school_admins (name, email, password_hash, role, sub_role, staff_id, is_department_head, serial_number)
+       VALUES ($1, $2, $3, 'SuperAdmin', $4, $5, FALSE, $6)
+       RETURNING id, name, email, role, sub_role, staff_id, is_department_head, serial_number`,
+      [app.name, app.email, hash, app.sub_role, nextId, serialNum]
     );
 
     // 6. Update application status to Hired
@@ -531,5 +553,28 @@ export const hireStaffApplication = async (req: AuthenticatedRequest, res: Respo
   } catch (error) {
     console.error('Error hiring staff application:', error);
     res.status(500).json({ error: 'Server error hiring application' });
+  }
+};
+
+// 15. Public: Verify Staff Member Credentials
+export const verifyStaff = async (req: any, res: Response) => {
+  const { id } = req.params; // this is the serial_number, e.g. SMA-AGENT-BIL-102
+  
+  try {
+    const result = await query(
+      `SELECT name, email, role, sub_role, staff_id, avatar_url, is_department_head, serial_number, created_at
+       FROM school_admins
+       WHERE serial_number = $1 OR (staff_id = $1 AND role = 'SuperAdmin')`,
+      [id.trim()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Nambarkan tixraaca ma jiro ama ma ahan shaqaale rami ah (Invalid reference number)' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error verifying staff member:', error);
+    res.status(500).json({ error: 'Cillad dhinaca server-ka ah ayaa dhacday' });
   }
 };
