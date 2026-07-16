@@ -9,10 +9,20 @@ const PORT = process.env.PORT || 5000;
 
 // Security Middlewares
 app.use(helmet());
+const ALLOWED_ORIGINS = [
+  'https://schoolappoint.com',
+  'https://www.schoolappoint.com',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Dynamically echo the origin back to allow localhost, Netlify, and custom domains
-    callback(null, true);
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.netlify.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   credentials: true
 }));
