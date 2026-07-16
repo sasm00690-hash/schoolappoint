@@ -9,19 +9,15 @@ const PORT = process.env.PORT || 5000;
 
 // Security Middlewares
 app.use(helmet());
-const ALLOWED_ORIGINS = [
-  'https://schoolappoint.com',
-  'https://www.schoolappoint.com',
-  'http://localhost:3000',
-  'http://localhost:5000'
-];
+const allowedOriginsPattern = /^(https?:\/\/(?:localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?|https?:\/\/.*\.netlify\.app|https?:\/\/.*\.netlify\.live|https?:\/\/.*schoolappoint\.com)$/i;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.netlify.app')) {
+    if (!origin || allowedOriginsPattern.test(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`[CORS Blocked] Origin: ${origin}`);
+      callback(null, false);
     }
   },
   credentials: true
